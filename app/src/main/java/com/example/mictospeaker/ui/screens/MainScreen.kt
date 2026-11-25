@@ -52,7 +52,7 @@ fun MainScreen(
         containerColor = BgDark,
         topBar = {
             TopAppBar(
-                title = { Text("Mic to Speaker", color = TextPrimary, fontWeight = FontWeight.SemiBold) },
+                title = { Text("Mic to Speaker - NFL", color = TextPrimary, fontWeight = FontWeight.SemiBold) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = BgDark),
                 actions = {
                     IconButton(onClick = onOpenSettings) {

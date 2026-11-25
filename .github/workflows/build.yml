@@ -61,11 +61,19 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: v1.0.0
-          name: "MicToSpeaker v1.0.0 (Auto Build)"
+          tag_name: v1.0.1
+          name: "Mic to Speaker - NFL v1.0.1"
           body: |
-            ## Mic to Speaker Android APK
+            ## Mic to Speaker - NFL v1.0.1
             Automated build from commit ${{ github.sha }}.
+            
+            ### Changelog:
+            - **Perbaikan Audio TWS & Bluetooth**: Mengatasi masalah suara hilang/tidak bunyi saat terhubung ke headset Bluetooth / TWS.
+              - Output stream dioptimasi ke Stereo untuk A2DP profile.
+              - Routing mikrofon otomatis diprioritaskan ke built-in mic ponsel saat mode A2DP/Speaker agar audio tertangkap jernih.
+              - Penambahan adaptive fallback untuk berbagai jenis perangkat & vendor Bluetooth HAL.
+              - Penambahan request Audio Focus kontinu untuk mencegah ducking/muting oleh sistem.
+            - **Nama Aplikasi Baru**: "Mic to Speaker - NFL".
             
             - **MicToSpeaker-release.apk**: Optimized release build (ProGuard / R8 enabled, signed with debug keystore for easy sideloading).
             - **MicToSpeaker-debug.apk**: Debug build with logcat output enabled.

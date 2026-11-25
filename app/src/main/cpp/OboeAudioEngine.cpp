@@ -22,19 +22,21 @@ bool OboeAudioEngine::start(
 ) {
     stop();
 
-    // 1. Buka Output Stream terlebih dahulu untuk menentukan sample rate native perangkat
+    // 1. Konfigurasi Output Stream
+    // TWS / Bluetooth A2DP dan headphone kabel memerlukan channel Stereo (2 channel).
+    // Sedangkan mode SCO (Voice Communication) menggunakan Mono (1 channel).
     oboe::AudioStreamBuilder outBuilder;
     outBuilder.setDirection(oboe::Direction::Output)
         ->setFormat(oboe::AudioFormat::Float)
-        ->setChannelCount(oboe::ChannelCount::Mono)
+        ->setChannelCount(isScoRoute ? oboe::ChannelCount::Mono : oboe::ChannelCount::Stereo)
         ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
-        ->setSharingMode(latencyMultiplier == 1
-            ? oboe::SharingMode::Exclusive
-            : oboe::SharingMode::Shared)
+        ->setSharingMode(oboe::SharingMode::Shared) // Shared wajib untuk Bluetooth A2DP & SCO
         ->setUsage(isScoRoute
             ? oboe::Usage::VoiceCommunication
             : oboe::Usage::Media)
-        ->setContentType(oboe::ContentType::Speech)
+        ->setContentType(isScoRoute
+            ? oboe::ContentType::Speech
+            : oboe::ContentType::Music)
         ->setDataCallback(this)
         ->setErrorCallback(this);
 
@@ -42,9 +44,26 @@ bool OboeAudioEngine::start(
         outBuilder.setDeviceId(outputDeviceId);
     }
 
+    // Buka stream dengan fallback adaptif untuk kompatibilitas TWS / berbagai merk HP
     oboe::Result outRes = outBuilder.openStream(mOutputStream);
+    if (outRes != oboe::Result::OK) {
+        LOGI("Fallback 1 Output: Hapus deviceId (gunakan system routing)");
+        outBuilder.setDeviceId(oboe::kUnspecified);
+        outRes = outBuilder.openStream(mOutputStream);
+    }
+    if (outRes != oboe::Result::OK) {
+        LOGI("Fallback 2 Output: Ubah channel ke Unspecified");
+        outBuilder.setChannelCount(oboe::ChannelCount::Unspecified);
+        outRes = outBuilder.openStream(mOutputStream);
+    }
+    if (outRes != oboe::Result::OK) {
+        LOGI("Fallback 3 Output: PerformanceMode None");
+        outBuilder.setPerformanceMode(oboe::PerformanceMode::None);
+        outRes = outBuilder.openStream(mOutputStream);
+    }
+
     if (outRes != oboe::Result::OK || !mOutputStream) {
-        LOGE("Gagal membuka Output Stream: %s", oboe::convertToText(outRes));
+        LOGE("Gagal membuka Output Stream setelah semua fallback: %s", oboe::convertToText(outRes));
         return false;
     }
 
@@ -54,10 +73,13 @@ bool OboeAudioEngine::start(
 
     // Atur ukuran buffer sesuai LatencyMode (1=LowLatency, 2=Balanced, 4=Stable)
     int32_t burst = mOutputStream->getFramesPerBurst();
+    if (burst <= 0) burst = 192;
     int32_t targetBuffer = std::min(burst * latencyMultiplier, mOutputStream->getBufferCapacityInFrames());
-    mOutputStream->setBufferSizeInFrames(targetBuffer);
+    if (targetBuffer > 0) {
+        mOutputStream->setBufferSizeInFrames(targetBuffer);
+    }
 
-    // 2. Buka Input Stream dengan sample rate yang sama (resampling otomatis oleh Oboe jika perlu)
+    // 2. Konfigurasi Input Stream (Mikrofon)
     oboe::AudioStreamBuilder inBuilder;
     inBuilder.setDirection(oboe::Direction::Input)
         ->setFormat(oboe::AudioFormat::Float)
@@ -65,25 +87,40 @@ bool OboeAudioEngine::start(
         ->setSampleRate(sampleRate)
         ->setSampleRateConversionQuality(oboe::SampleRateConversionQuality::Medium)
         ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
-        ->setSharingMode(latencyMultiplier == 1
-            ? oboe::SharingMode::Exclusive
-            : oboe::SharingMode::Shared)
+        ->setSharingMode(oboe::SharingMode::Shared)
         ->setInputPreset(echoNoiseSuppression
             ? oboe::InputPreset::VoiceCommunication
-            : oboe::InputPreset::Generic);
+            : oboe::InputPreset::Mic)
+        ->setErrorCallback(this);
 
     if (inputDeviceId > 0) {
         inBuilder.setDeviceId(inputDeviceId);
     }
 
     oboe::Result inRes = inBuilder.openStream(mInputStream);
+    if (inRes != oboe::Result::OK) {
+        LOGI("Fallback 1 Input: Coba native sample rate");
+        inBuilder.setSampleRate(oboe::kUnspecified);
+        inRes = inBuilder.openStream(mInputStream);
+    }
+    if (inRes != oboe::Result::OK) {
+        LOGI("Fallback 2 Input: Hapus deviceId");
+        inBuilder.setDeviceId(oboe::kUnspecified);
+        inRes = inBuilder.openStream(mInputStream);
+    }
+    if (inRes != oboe::Result::OK) {
+        LOGI("Fallback 3 Input: PerformanceMode None");
+        inBuilder.setPerformanceMode(oboe::PerformanceMode::None);
+        inRes = inBuilder.openStream(mInputStream);
+    }
+
     if (inRes != oboe::Result::OK || !mInputStream) {
-        LOGE("Gagal membuka Input Stream: %s", oboe::convertToText(inRes));
+        LOGE("Gagal membuka Input Stream setelah fallback: %s", oboe::convertToText(inRes));
         stop();
         return false;
     }
 
-    // 3. Pre-alokasi seluruh buffer DSP sebelum stream berjalan (zero allocation di audio thread)
+    // 3. Pre-alokasi buffer DSP sebelum stream berjalan (zero allocation di audio thread)
     int32_t maxFrames = std::max(mOutputStream->getBufferCapacityInFrames(), 4096);
     mInputBuffer.assign(static_cast<size_t>(maxFrames), 0.0f);
 
@@ -99,11 +136,13 @@ bool OboeAudioEngine::start(
 
     // 4. Mulai Input lebih dulu, lalu Output
     if (mInputStream->requestStart() != oboe::Result::OK) {
+        LOGE("Gagal menjalankan Input Stream");
         stop();
         return false;
     }
 
     if (mOutputStream->requestStart() != oboe::Result::OK) {
+        LOGE("Gagal menjalankan Output Stream");
         stop();
         return false;
     }
@@ -123,7 +162,6 @@ void OboeAudioEngine::stop() {
         mInputStream->close();
         mInputStream.reset();
     }
-    mLatestRms.store(0.0f, std::memory_order_relaxed);
 }
 
 void OboeAudioEngine::updateLiveParams(
@@ -184,11 +222,11 @@ oboe::DataCallbackResult OboeAudioEngine::onAudioReady(
     auto* out = static_cast<float*>(audioData);
     const int32_t framesToProcess = std::min<int32_t>(numFrames, static_cast<int32_t>(mInputBuffer.size()));
 
-    // Non-blocking read dari mikrofon
+    // Baca mikrofon dengan timeout 12ms agar data mikrofon selalu tersedia dan tidak drop ke silence saat ada jitter Bluetooth
     int32_t framesRead = 0;
     if (mInputStream) {
-        auto result = mInputStream->read(mInputBuffer.data(), framesToProcess, 0);
-        if (result) {
+        auto result = mInputStream->read(mInputBuffer.data(), framesToProcess, 12000000); // 12 ms timeout
+        if (result && result.value() > 0) {
             framesRead = result.value();
         }
     }

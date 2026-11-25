@@ -109,7 +109,7 @@ class AudioPassthroughService : Service() {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Mic to Speaker Active",
+            "Mic to Speaker - NFL Active",
             NotificationManager.IMPORTANCE_LOW
         )
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
@@ -127,7 +127,7 @@ class AudioPassthroughService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Mic to Speaker aktif")
+            .setContentTitle("Mic to Speaker - NFL aktif")
             .setContentText("Meneruskan suara mikrofon ke output audio")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentIntent(pendingIntent)
