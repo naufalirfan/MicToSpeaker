@@ -55,6 +55,24 @@ Java_com_example_mictospeaker_audio_OboeNativeBridge_nativeSetRecording(
     }
 }
 
+JNIEXPORT void JNICALL
+Java_com_example_mictospeaker_audio_OboeNativeBridge_nativeSetEq(
+    JNIEnv*, jobject, jlong handle, jfloat bassDb, jfloat midDb, jfloat trebleDb
+) {
+    if (auto* engine = asEngine(handle)) {
+        engine->setEqGains(bassDb, midDb, trebleDb);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_mictospeaker_audio_OboeNativeBridge_nativeSetLimiterThreshold(
+    JNIEnv*, jobject, jlong handle, jfloat threshold
+) {
+    if (auto* engine = asEngine(handle)) {
+        engine->setLimiterThreshold(threshold);
+    }
+}
+
 JNIEXPORT jfloat JNICALL
 Java_com_example_mictospeaker_audio_OboeNativeBridge_nativeGetRms(JNIEnv*, jobject, jlong handle) {
     auto* engine = asEngine(handle);

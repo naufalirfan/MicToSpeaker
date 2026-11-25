@@ -240,6 +240,14 @@ bool OboeAudioEngine::start(
 
     setupJokowiFilter(sampleRate);
 
+    mEq.init(static_cast<float>(sampleRate));
+    mMegaHpf.setHPF(600.0f, 0.707f, static_cast<float>(sampleRate));
+    mMegaLpf.setLPF(2800.0f, 0.707f, static_cast<float>(sampleRate));
+    mMegaHpf.reset();
+    mMegaLpf.reset();
+    mRobotPhase = 0.0f;
+    mSoftLimiter.setThreshold(0.8f);
+
     mRingWrite.store(0, std::memory_order_relaxed);
     mRingRead.store(0, std::memory_order_relaxed);
 
@@ -366,6 +374,9 @@ oboe::DataCallbackResult OboeAudioEngine::onAudioReady(
 ) {
     auto* out = static_cast<float*>(audioData);
 
+    // Sinkronisasi koefisien 3-Band EQ jika ada perubahan slider
+    mEq.syncParameters();
+
     // Ambil sampel suara dari lock-free Jitter Buffer (zero blocking / instant read)
     size_t r = mJitterRead.load(std::memory_order_relaxed);
     size_t w = mJitterWrite.load(std::memory_order_acquire);
@@ -485,12 +496,29 @@ oboe::DataCallbackResult OboeAudioEngine::onAudioReady(
                 }
                 break;
             }
+            case 8: { // MEGAPHONE / TOA (dari PDF)
+                float hp = mMegaHpf.process(sample);
+                float lp = mMegaLpf.process(hp);
+                sample = std::tanh(lp * 3.5f) * 0.75f;
+                break;
+            }
+            case 9: { // ROBOT (dari PDF)
+                float carrier = std::sin(mRobotPhase);
+                mRobotPhase += 2.0f * kPi * 70.0f / static_cast<float>(mSampleRate.load(std::memory_order_relaxed));
+                if (mRobotPhase >= 2.0f * kPi) mRobotPhase -= 2.0f * kPi;
+                sample = (sample * carrier * 0.85f) + (sample * 0.15f);
+                break;
+            }
             default: // NATURAL (Bypass)
                 break;
         }
 
-        // Gain + Soft Clipping
-        const float outSample = std::tanh(sample * gain);
+        // Terapkan 3-Band Equalizer (Bass 200Hz, Mid 1000Hz, Treble 4000Hz)
+        sample = mEq.process(sample);
+
+        // Terapkan Soft Limiter (Zero-Latency Anti-Clipping dari PDF)
+        // Linear 100% bersih di bawah 0.8f (-2 dBFS), soft-knee tanh halus menuju 1.0f jika gain berlebih
+        const float outSample = mSoftLimiter.process(sample * gain);
 
         // Tulis ke buffer output (mono atau stereo)
         if (mOutputChannels == 1) {
@@ -510,6 +538,14 @@ oboe::DataCallbackResult OboeAudioEngine::onAudioReady(
 
     mLatestRms.store(muted ? 0.0f : std::clamp(rms * gain, 0.0f, 1.0f), std::memory_order_relaxed);
     return oboe::DataCallbackResult::Continue;
+}
+
+void OboeAudioEngine::setEqGains(float bassDb, float midDb, float trebleDb) {
+    mEq.setGains(bassDb, midDb, trebleDb);
+}
+
+void OboeAudioEngine::setLimiterThreshold(float threshold) {
+    mSoftLimiter.setThreshold(threshold);
 }
 
 void OboeAudioEngine::onErrorAfterClose(oboe::AudioStream* /*stream*/, oboe::Result error) {

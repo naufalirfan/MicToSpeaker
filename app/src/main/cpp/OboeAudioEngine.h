@@ -29,6 +29,8 @@ public:
         int32_t presetIndex,
         bool isMuted
     );
+    void setEqGains(float bassDb, float midDb, float trebleDb);
+    void setLimiterThreshold(float threshold);
 
     void setRecordingEnabled(bool enabled);
     float getLatestRms() const;
@@ -144,6 +146,112 @@ private:
             a1 = (-2.0f * std::cos(w0)) / a0;
             a2 = (1.0f - alpha) / a0;
         }
+
+        void setLowShelf(float freq, float q, float gainDb, float sampleRate) {
+            if (sampleRate <= 0.0f) sampleRate = 48000.0f;
+            float A = std::pow(10.0f, gainDb / 40.0f);
+            float w0 = 2.0f * 3.14159265358979323846f * freq / sampleRate;
+            float cosW0 = std::cos(w0);
+            float sinW0 = std::sin(w0);
+            float alpha = sinW0 / (2.0f * q);
+            float twoSqrtAAlpha = 2.0f * std::sqrt(A) * alpha;
+
+            float rawB0 = A * ((A + 1.0f) - (A - 1.0f) * cosW0 + twoSqrtAAlpha);
+            float rawB1 = 2.0f * A * ((A - 1.0f) - (A + 1.0f) * cosW0);
+            float rawB2 = A * ((A + 1.0f) - (A - 1.0f) * cosW0 - twoSqrtAAlpha);
+            float rawA0 = (A + 1.0f) + (A - 1.0f) * cosW0 + twoSqrtAAlpha;
+            float rawA1 = -2.0f * ((A - 1.0f) + (A + 1.0f) * cosW0);
+            float rawA2 = (A + 1.0f) + (A - 1.0f) * cosW0 - twoSqrtAAlpha;
+
+            b0 = rawB0 / rawA0;
+            b1 = rawB1 / rawA0;
+            b2 = rawB2 / rawA0;
+            a1 = rawA1 / rawA0;
+            a2 = rawA2 / rawA0;
+        }
+
+        void setHighShelf(float freq, float q, float gainDb, float sampleRate) {
+            if (sampleRate <= 0.0f) sampleRate = 48000.0f;
+            float A = std::pow(10.0f, gainDb / 40.0f);
+            float w0 = 2.0f * 3.14159265358979323846f * freq / sampleRate;
+            float cosW0 = std::cos(w0);
+            float sinW0 = std::sin(w0);
+            float alpha = sinW0 / (2.0f * q);
+            float twoSqrtAAlpha = 2.0f * std::sqrt(A) * alpha;
+
+            float rawB0 = A * ((A + 1.0f) + (A - 1.0f) * cosW0 + twoSqrtAAlpha);
+            float rawB1 = -2.0f * A * ((A - 1.0f) + (A + 1.0f) * cosW0);
+            float rawB2 = A * ((A + 1.0f) + (A - 1.0f) * cosW0 - twoSqrtAAlpha);
+            float rawA0 = (A + 1.0f) - (A - 1.0f) * cosW0 + twoSqrtAAlpha;
+            float rawA1 = 2.0f * ((A - 1.0f) - (A + 1.0f) * cosW0);
+            float rawA2 = (A + 1.0f) - (A - 1.0f) * cosW0 - twoSqrtAAlpha;
+
+            b0 = rawB0 / rawA0;
+            b1 = rawB1 / rawA0;
+            b2 = rawB2 / rawA0;
+            a1 = rawA1 / rawA0;
+            a2 = rawA2 / rawA0;
+        }
+    };
+
+    // 3-Band Equalizer (LowShelf 200Hz, Peaking 1000Hz, HighShelf 4000Hz)
+    class ThreeBandEQ {
+    public:
+        void init(float sampleRate) {
+            mSampleRate = (sampleRate > 0.0f) ? sampleRate : 48000.0f;
+            mBass.reset();
+            mMid.reset();
+            mTreble.reset();
+            updateCoefficients();
+        }
+        void setGains(float bassDb, float midDb, float trebleDb) {
+            mBassDb.store(std::clamp(bassDb, -12.0f, 12.0f), std::memory_order_relaxed);
+            mMidDb.store(std::clamp(midDb, -12.0f, 12.0f), std::memory_order_relaxed);
+            mTrebleDb.store(std::clamp(trebleDb, -12.0f, 12.0f), std::memory_order_relaxed);
+            mDirty.store(true, std::memory_order_release);
+        }
+        void syncParameters() {
+            if (mDirty.exchange(false, std::memory_order_acquire)) {
+                updateCoefficients();
+            }
+        }
+        inline float process(float sample) {
+            sample = mBass.process(sample);
+            sample = mMid.process(sample);
+            sample = mTreble.process(sample);
+            return sample;
+        }
+    private:
+        void updateCoefficients() {
+            mBass.setLowShelf(200.0f, 0.707f, mBassDb.load(std::memory_order_relaxed), mSampleRate);
+            mMid.setPeaking(1000.0f, 0.707f, mMidDb.load(std::memory_order_relaxed), mSampleRate);
+            mTreble.setHighShelf(4000.0f, 0.707f, mTrebleDb.load(std::memory_order_relaxed), mSampleRate);
+        }
+        float mSampleRate = 48000.0f;
+        BiquadFilter mBass, mMid, mTreble;
+        std::atomic<float> mBassDb{0.0f}, mMidDb{0.0f}, mTrebleDb{0.0f};
+        std::atomic<bool> mDirty{false};
+    };
+
+    // Soft Limiter (Zero-Latency Anti-Clipping dari PDF)
+    class SoftLimiter {
+    public:
+        void setThreshold(float threshold) {
+            mThreshold.store(std::clamp(threshold, 0.1f, 0.99f), std::memory_order_relaxed);
+        }
+        inline float process(float x) {
+            float thresh = mThreshold.load(std::memory_order_relaxed);
+            float absX = std::fabs(x);
+            if (absX <= thresh) {
+                return x;
+            }
+            float sign = (x >= 0.0f) ? 1.0f : -1.0f;
+            float headroom = 1.0f - thresh;
+            float excess = (absX - thresh) / headroom;
+            return sign * (thresh + headroom * std::tanh(excess));
+        }
+    private:
+        std::atomic<float> mThreshold{0.8f};
     };
 
     // GoPay Soundbox Jokowi Acoustic & Formant Chain:
@@ -160,6 +268,12 @@ private:
     BiquadFilter mJokowiLpf;
     std::vector<float> mJokowiBoxBuffer;
     size_t mJokowiBoxIndex = 0;
+
+    ThreeBandEQ mEq;
+    SoftLimiter mSoftLimiter;
+    BiquadFilter mMegaHpf;
+    BiquadFilter mMegaLpf;
+    float mRobotPhase = 0.0f;
 
     void setupJokowiFilter(int32_t sampleRate);
     float processPitchShift(float inSample, float pitchRatio);

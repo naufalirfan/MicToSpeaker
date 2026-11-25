@@ -43,6 +43,14 @@ class AudioPassthroughService : Service() {
 
     override fun onBind(intent: Intent?): IBinder = binder
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            stopPassthrough()
+            return START_NOT_STICKY
+        }
+        return START_STICKY
+    }
+
     fun startPassthrough(config: AudioConfig): Boolean {
         val notification = buildNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -126,16 +134,28 @@ class AudioPassthroughService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val stopIntent = Intent(this, AudioPassthroughService::class.java).apply {
+            action = ACTION_STOP
+        }
+        val stopPendingIntent = PendingIntent.getService(
+            this,
+            1,
+            stopIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Mic to Speaker - NFL aktif")
             .setContentText("Meneruskan suara mikrofon ke output audio")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentIntent(pendingIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Matikan", stopPendingIntent)
             .setOngoing(true)
             .build()
     }
 
     companion object {
+        const val ACTION_STOP = "com.example.mictospeaker.ACTION_STOP"
         private const val CHANNEL_ID = "mic_passthrough_channel"
         private const val NOTIFICATION_ID = 1001
     }

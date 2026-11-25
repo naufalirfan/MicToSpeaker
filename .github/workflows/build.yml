@@ -68,27 +68,29 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: v1.0.5
-          name: "Mic to Speaker - NFL v1.0.5 (GoPay Soundbox Jokowi Effect)"
+          tag_name: v1.0.6
+          name: "Mic to Speaker - NFL v1.0.6 (Soft Limiter, 3-Band EQ & YouTube Karaoke Mixing)"
           body: |
-            ## Mic to Speaker - NFL v1.0.5 (GoPay Soundbox Jokowi Effect)
+            ## Mic to Speaker - NFL v1.0.6 (Soft Limiter, 3-Band EQ & YouTube Karaoke Mixing)
             Automated build from commit ${{ github.sha }}.
             
-            ### Peningkatan Efek Suara Jokowi (GoPay Soundbox Style):
-            - **Multi-stage RBJ Biquad Formant Modeling**:
-              - **Nasal Formant Boost (1220 Hz, +9.5 dB)**: Menghasilkan resonansi sengau khas aksen Solo Pak Jokowi.
-              - **Chest Scoop Filter (500 Hz, -5.5 dB)**: Meredam resonansi dada tebal agar vokal menjadi khas dan tidak seperti suara pria biasa.
-              - **Throat Articulation Presence (2550 Hz, +6.5 dB)**: Mempertahankan kejelasan huruf konsonan dan artikulasi bicara.
-              - **Box Speaker HPF (240 Hz) & LPF (4600 Hz)**: Memotong sub-bass dan mendesain acoustic frequency response khas speaker portabel GoPay Soundbox.
-            - **Speaker Overdrive & Saturation Harmonics**:
-              - Memberikan saturasi harmonik hangat orde ke-2 & ke-3 khas pengeras suara box POS.
-            - **Cabinet Acoustic Reflection (~22ms Delay)**:
-              - Memberikan pantulan akustik soundbox portabel secara real-time.
-            - **Optimized Pitch Ratio (0.89x)**:
-              - Menurunkan nada bicara ke register bariton santai dan berwibawa khas Pak Jokowi.
+            ### Fitur Baru & Peningkatan DSP (Sesuai Panduan Audio Engine C++):
+            - **Soft Limiter (Zero-Latency Anti-Clipping)**:
+              - Sinyal di bawah 0.8f (-2 dBFS) tetap 100% linear tanpa perubahan warna suara.
+              - Transisi soft-knee saturasi tanh dinamis di atas ambang batas, mencegah suara nguing (feedback), distorsi pecah, dan kerusakan speaker saat volume/gain tinggi.
+            - **3-Band Equalizer (Thread-Safe DSP)**:
+              - Low-Shelf 200 Hz, Peaking 1000 Hz, High-Shelf 4000 Hz di dalam callback C++ Oboe.
+            - **Preserving YouTube Karaoke Audio Mixing**:
+              - Pengaturan AudioFocus cerdas (`AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` pada media route) sehingga musik dari YouTube atau Spotify tidak ter-pause saat mic dinyalakan. Suara mic dan musik ter-mix bersamaan ke speaker Bluetooth/AUX.
+            - **Preset Baru (Megaphone & Robot)**:
+              - **📢 Toa / Megaphone**: Bandpass 600–2800 Hz dengan distorsi corong khas pengumuman.
+              - **🤖 Robot**: Ring modulation sinus 70 Hz (85% wet / 15% dry).
+            - **Aksi Cepat di Notifikasi**:
+              - Tombol "Matikan" langsung di notification bar untuk menghentikan audio tanpa membuka aplikasi.
             
             ### Fitur Utama Sebelumnya:
             - Routing lancar Bluetooth TWS / A2DP & SCO tanpa hening (OpenSL ES + AudioFlinger).
+            - Efek Suara GoPay Soundbox Jokowi (multi-stage RBJ formant modeling & cabinet reflection).
             - Decoupled mic capture thread dengan auto-priming watermark (~21ms) dan auto-drift limiter.
             - Permanent Keystore release signing (v1 + v2 scheme).
             

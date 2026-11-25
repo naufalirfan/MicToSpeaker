@@ -12,7 +12,9 @@ enum class SoundPreset(val label: String, val iconEmoji: String) {
     IMUT("Imut", "🌸"),
     JOKOWI("Jokowi", "🇮🇩"),
     VOICE_CLARITY("Clarity", "🎙️"),
-    KARAOKE_ECHO("Echo", "🎶")
+    KARAOKE_ECHO("Echo", "🎶"),
+    MEGAPHONE("Toa", "📢"),
+    ROBOT("Robot", "🤖")
 }
 
 enum class LatencyMode(val bufferMultiplier: Int) {

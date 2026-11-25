@@ -22,6 +22,8 @@ class OboeNativeBridge {
     }
 
     fun setRecording(enabled: Boolean) = nativeSetRecording(nativeHandle, enabled)
+    fun setEq(bassDb: Float, midDb: Float, trebleDb: Float) = nativeSetEq(nativeHandle, bassDb, midDb, trebleDb)
+    fun setLimiterThreshold(threshold: Float) = nativeSetLimiterThreshold(nativeHandle, threshold)
     fun getRms(): Float = nativeGetRms(nativeHandle)
     fun getSampleRate(): Int = nativeGetSampleRate(nativeHandle)
     fun drainPcm(buffer: ShortArray): Int = nativeDrainPcm(nativeHandle, buffer)
@@ -44,6 +46,8 @@ class OboeNativeBridge {
         handle: Long, gain: Float, noiseGate: Float, presetIndex: Int, isMuted: Boolean
     )
     private external fun nativeSetRecording(handle: Long, enabled: Boolean)
+    private external fun nativeSetEq(handle: Long, bassDb: Float, midDb: Float, trebleDb: Float)
+    private external fun nativeSetLimiterThreshold(handle: Long, threshold: Float)
     private external fun nativeGetRms(handle: Long): Float
     private external fun nativeGetSampleRate(handle: Long): Int
     private external fun nativeDrainPcm(handle: Long, dest: ShortArray): Int

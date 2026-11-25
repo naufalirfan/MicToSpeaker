@@ -190,39 +190,55 @@ class AudioEngine(private val context: Context) {
     }
 
     private fun requestAudioFocus(route: OutputRoute) {
-        val usage = if (route == OutputRoute.VOICE_SCO) {
-            AudioAttributes.USAGE_VOICE_COMMUNICATION
-        } else {
-            AudioAttributes.USAGE_MEDIA
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val contentType = if (route == OutputRoute.VOICE_SCO) {
-                AudioAttributes.CONTENT_TYPE_SPEECH
-            } else {
-                AudioAttributes.CONTENT_TYPE_MUSIC
-            }
-
+        if (route == OutputRoute.VOICE_SCO) {
             val attr = AudioAttributes.Builder()
-                .setUsage(usage)
-                .setContentType(contentType)
+                .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                 .build()
 
-            val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                .setAudioAttributes(attr)
-                .setAcceptsDelayedFocusGain(false)
-                .setOnAudioFocusChangeListener { /* maintain continuous audio output */ }
-                .build()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(attr)
+                    .setAcceptsDelayedFocusGain(false)
+                    .setOnAudioFocusChangeListener { /* maintain continuous audio output */ }
+                    .build()
 
-            focusRequest = req
-            audioManager.requestAudioFocus(req)
+                focusRequest = req
+                audioManager.requestAudioFocus(req)
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.requestAudioFocus(
+                    null,
+                    AudioManager.STREAM_VOICE_CALL,
+                    AudioManager.AUDIOFOCUS_GAIN
+                )
+            }
         } else {
-            @Suppress("DEPRECATION")
-            audioManager.requestAudioFocus(
-                null,
-                if (route == OutputRoute.VOICE_SCO) AudioManager.STREAM_VOICE_CALL else AudioManager.STREAM_MUSIC,
-                AudioManager.AUDIOFOCUS_GAIN
-            )
+            // PENTING: Untuk Mode Musik (A2DP / AUX / Karaoke):
+            // Sesuai panduan PDF (agar bisa karaoke sambil buka YouTube),
+            // gunakan AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK agar musik YouTube / Spotify tidak ter-pause saat mic menyala
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val attr = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build()
+
+                val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                    .setAudioAttributes(attr)
+                    .setAcceptsDelayedFocusGain(true)
+                    .setOnAudioFocusChangeListener { /* maintain continuous audio output */ }
+                    .build()
+
+                focusRequest = req
+                audioManager.requestAudioFocus(req)
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.requestAudioFocus(
+                    null,
+                    AudioManager.STREAM_MUSIC,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+                )
+            }
         }
     }
 
