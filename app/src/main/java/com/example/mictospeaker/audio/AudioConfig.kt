@@ -3,7 +3,18 @@ package com.example.mictospeaker.audio
 import android.media.AudioDeviceInfo
 
 enum class OutputRoute { MUSIC_A2DP, VOICE_SCO }
-enum class SoundPreset { NATURAL, VOICE_CLARITY, KARAOKE_ECHO }
+
+enum class SoundPreset(val label: String, val iconEmoji: String) {
+    NATURAL("Normal", "🎤"),
+    COWO("Cowo", "👨"),
+    CEWE("Cewe", "👩"),
+    LUCU("Lucu", "🐹"),
+    IMUT("Imut", "🌸"),
+    JOKOWI("Jokowi", "🇮🇩"),
+    VOICE_CLARITY("Clarity", "🎙️"),
+    KARAOKE_ECHO("Echo", "🎶")
+}
+
 enum class LatencyMode(val bufferMultiplier: Int) {
     LOW_LATENCY(1),
     BALANCED(2),

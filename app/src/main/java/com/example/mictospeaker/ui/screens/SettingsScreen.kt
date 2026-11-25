@@ -123,15 +123,20 @@ fun SettingsScreen(
                 Text("Silences sound below this level.", color = TextSecondary, fontSize = 12.sp)
 
                 Spacer(Modifier.height(16.dp))
-                Text("Sound preset", color = TextSecondary, fontSize = 14.sp)
+                Text("Sound preset / Efek Suara", color = TextSecondary, fontSize = 14.sp)
                 Spacer(Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    RouteChip("Natural", state.config.preset == SoundPreset.NATURAL) { onPresetChange(SoundPreset.NATURAL) }
-                    RouteChip("Voice Clarity", state.config.preset == SoundPreset.VOICE_CLARITY) { onPresetChange(SoundPreset.VOICE_CLARITY) }
-                    RouteChip("Karaoke Echo", state.config.preset == SoundPreset.KARAOKE_ECHO) { onPresetChange(SoundPreset.KARAOKE_ECHO) }
+                    SoundPreset.entries.forEach { p ->
+                        RouteChip(
+                            label = "${p.iconEmoji} ${p.label}",
+                            selected = state.config.preset == p
+                        ) {
+                            onPresetChange(p)
+                        }
+                    }
                 }
 
                 Spacer(Modifier.height(16.dp))

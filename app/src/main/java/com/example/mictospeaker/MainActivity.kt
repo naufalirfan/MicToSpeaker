@@ -119,6 +119,7 @@ class MainActivity : ComponentActivity() {
                             onTogglePtt = viewModel::togglePttMode,
                             onToggleSaveWav = viewModel::toggleSaveWav,
                             onGainChange = viewModel::setGain,
+                            onPresetChange = viewModel::setSoundPreset,
                             onRouteChange = viewModel::setOutputRoute,
                             onSelectDevice = viewModel::selectDevice,
                             onRefreshDevices = viewModel::refreshDevices

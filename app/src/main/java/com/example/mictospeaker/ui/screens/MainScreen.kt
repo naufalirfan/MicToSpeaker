@@ -24,7 +24,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import com.example.mictospeaker.audio.OutputRoute
+import com.example.mictospeaker.audio.SoundPreset
 import com.example.mictospeaker.data.OutputDeviceItem
 import com.example.mictospeaker.ui.theme.*
 import com.example.mictospeaker.ui.viewmodel.MicUiState
@@ -42,6 +45,7 @@ fun MainScreen(
     onTogglePtt: () -> Unit,
     onToggleSaveWav: () -> Unit,
     onGainChange: (Float) -> Unit,
+    onPresetChange: (SoundPreset) -> Unit,
     onRouteChange: (OutputRoute) -> Unit,
     onSelectDevice: (OutputDeviceItem) -> Unit,
     onRefreshDevices: () -> Unit
@@ -133,6 +137,31 @@ fun MainScreen(
                     .fillMaxWidth()
                     .height(40.dp)
             )
+
+            Spacer(Modifier.height(18.dp))
+
+            // Pemilih Efek Suara Cepat (Voice Effects)
+            Text(
+                text = "Voice Effect: ${state.config.preset.iconEmoji} ${state.config.preset.label}",
+                color = TextSecondary,
+                fontSize = 13.sp,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SoundPreset.entries.forEach { p ->
+                    RouteChip(
+                        label = "${p.iconEmoji} ${p.label}",
+                        selected = state.config.preset == p,
+                        onClick = { onPresetChange(p) }
+                    )
+                }
+            }
 
             Spacer(Modifier.weight(1f))
 

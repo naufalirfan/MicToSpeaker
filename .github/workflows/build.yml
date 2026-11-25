@@ -61,19 +61,22 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: v1.0.1
-          name: "Mic to Speaker - NFL v1.0.1"
+          tag_name: v1.0.2
+          name: "Mic to Speaker - NFL v1.0.2 (Voice Effects)"
           body: |
-            ## Mic to Speaker - NFL v1.0.1
+            ## Mic to Speaker - NFL v1.0.2 (Voice Effects)
             Automated build from commit ${{ github.sha }}.
             
-            ### Changelog:
-            - **Perbaikan Audio TWS & Bluetooth**: Mengatasi masalah suara hilang/tidak bunyi saat terhubung ke headset Bluetooth / TWS.
-              - Output stream dioptimasi ke Stereo untuk A2DP profile.
-              - Routing mikrofon otomatis diprioritaskan ke built-in mic ponsel saat mode A2DP/Speaker agar audio tertangkap jernih.
-              - Penambahan adaptive fallback untuk berbagai jenis perangkat & vendor Bluetooth HAL.
-              - Penambahan request Audio Focus kontinu untuk mencegah ducking/muting oleh sistem.
-            - **Nama Aplikasi Baru**: "Mic to Speaker - NFL".
+            ### Fitur Baru: Efek Pengubah Suara Real-time (Voice Changer)
+            Tersedia langsung di layar utama (1-tap) dan menu Settings:
+            - **👨 Cowo**: Suara pria berat / deep bass voice (pitch shift down + low-pass chest warmth).
+            - **👩 Cewe**: Suara wanita nyaring natural (pitch shift up + vocal clarity presence).
+            - **🐹 Lucu**: Suara kartun / chipmunk yang lucu dan menggemaskan.
+            - **🌸 Imut**: Suara anime / kawaii manis dengan subtle soft ambiance.
+            - **🇮🇩 Jokowi**: Khas karakter vokal Pak Jokowi dengan resonansi mid-nasal (1150 Hz bandpass filter) dan nada santai.
+            - **🎙️ Clarity**: Mode vokal jernih bebas dengung (High-Pass Filter).
+            - **🎶 Echo**: Gema karaoke stereo.
+            - **🎤 Normal**: Suara asli mikrofon tanpa efek.
             
             - **MicToSpeaker-release.apk**: Optimized release build (ProGuard / R8 enabled, signed with debug keystore for easy sideloading).
             - **MicToSpeaker-debug.apk**: Debug build with logcat output enabled.
