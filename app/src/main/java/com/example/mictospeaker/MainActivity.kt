@@ -94,7 +94,8 @@ class MainActivity : ComponentActivity() {
                             onSelectDevice = viewModel::selectDevice,
                             onTogglePtt = viewModel::togglePttMode,
                             onToggleUsePhoneMic = viewModel::setUsePhoneMicInSco,
-                            onToggleEchoSuppression = viewModel::setEchoSuppression
+                            onToggleEchoSuppression = viewModel::setEchoSuppression,
+                            onExit = ::exitApplication
                         )
                     } else {
                         MainScreen(
@@ -122,7 +123,9 @@ class MainActivity : ComponentActivity() {
                             onPresetChange = viewModel::setSoundPreset,
                             onRouteChange = viewModel::setOutputRoute,
                             onSelectDevice = viewModel::selectDevice,
-                            onRefreshDevices = viewModel::refreshDevices
+                            onRefreshDevices = viewModel::refreshDevices,
+                            onExit = ::exitApplication,
+                            onMinimize = ::minimizeApplication
                         )
                     }
 
@@ -171,5 +174,20 @@ class MainActivity : ComponentActivity() {
 
     private fun requestRequiredPermissions() {
         permissionLauncher.launch(requiredPermissions())
+    }
+
+    private fun exitApplication() {
+        if (viewModel.uiState.value.isStreaming) {
+            viewModel.toggleStreaming()
+        }
+        val stopIntent = android.content.Intent(this, com.example.mictospeaker.audio.AudioPassthroughService::class.java).apply {
+            action = com.example.mictospeaker.audio.AudioPassthroughService.ACTION_STOP
+        }
+        startService(stopIntent)
+        finishAndRemoveTask()
+    }
+
+    private fun minimizeApplication() {
+        moveTaskToBack(true)
     }
 }

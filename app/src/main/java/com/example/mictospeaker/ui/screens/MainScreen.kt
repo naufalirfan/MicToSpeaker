@@ -48,7 +48,9 @@ fun MainScreen(
     onPresetChange: (SoundPreset) -> Unit,
     onRouteChange: (OutputRoute) -> Unit,
     onSelectDevice: (OutputDeviceItem) -> Unit,
-    onRefreshDevices: () -> Unit
+    onRefreshDevices: () -> Unit,
+    onExit: () -> Unit = {},
+    onMinimize: () -> Unit = {}
 ) {
     var showDeviceSheet by remember { mutableStateOf(false) }
 
@@ -59,8 +61,14 @@ fun MainScreen(
                 title = { Text("Mic to Speaker - NFL", color = TextPrimary, fontWeight = FontWeight.SemiBold) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = BgDark),
                 actions = {
+                    IconButton(onClick = onMinimize) {
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Minimize", tint = TextSecondary)
+                    }
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextSecondary)
+                    }
+                    IconButton(onClick = onExit) {
+                        Icon(Icons.Default.PowerSettingsNew, contentDescription = "Exit", tint = Color(0xFFEF4444))
                     }
                 }
             )

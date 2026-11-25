@@ -46,7 +46,8 @@ fun SettingsScreen(
     onSelectDevice: (OutputDeviceItem) -> Unit,
     onTogglePtt: () -> Unit,
     onToggleUsePhoneMic: (Boolean) -> Unit,
-    onToggleEchoSuppression: (Boolean) -> Unit
+    onToggleEchoSuppression: (Boolean) -> Unit,
+    onExit: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var activeDialogTitle by remember { mutableStateOf<String?>(null) }
@@ -327,9 +328,18 @@ fun SettingsScreen(
                 InfoActionRow(
                     icon = Icons.Default.Info,
                     title = "About",
-                    subtitle = "Version 1.0.0 • C++ Oboe Engine",
+                    subtitle = "Version 1.0.8 • C++ Oboe Engine (17 Efek Suara)",
                     showChevron = false,
                     onClick = {}
+                )
+                HorizontalDivider(color = DividerDark)
+
+                InfoActionRow(
+                    icon = Icons.Default.PowerSettingsNew,
+                    title = "Exit App",
+                    subtitle = "Hentikan audio dan tutup aplikasi sepenuhnya.",
+                    showChevron = false,
+                    onClick = onExit
                 )
             }
         }

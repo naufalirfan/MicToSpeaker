@@ -68,13 +68,21 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: v1.0.7
-          name: "Mic to Speaker - NFL v1.0.7 (17 Real-time Voice Effects)"
+          tag_name: v1.0.8
+          name: "Mic to Speaker - NFL v1.0.8 (Exit, Minimize & 17 Voice Effects)"
           body: |
-            ## Mic to Speaker - NFL v1.0.7 (17 Real-time Voice Effects)
+            ## Mic to Speaker - NFL v1.0.8 (Exit, Minimize & 17 Real-time Voice Effects)
             Automated build from commit ${{ github.sha }}.
             
-            ### Daftar 17 Efek Suara Real-time Lengkap:
+            ### Fitur Baru & Peningkatan di v1.0.8:
+            1. **🔴 Tombol Exit Aplikasi Penuh**:
+               - Terletak di pojok kanan atas `TopAppBar` (ikon power merah) dan di bagian bawah `SettingsScreen`.
+               - Menghentikan Oboe stream, mematikan `AudioPassthroughService` foreground notification, dan memanggil `finishAndRemoveTask()` sehingga aplikasi tertutup bersih 100%.
+            2. **🔽 Tombol Minimize**:
+               - Terletak di sebelah kiri ikon Settings (`moveTaskToBack(true)`).
+               - Memungkinkan pengguna bernyanyi karaoke sambil membuka YouTube / Spotify di latar belakang tanpa mematikan suara mic!
+            3. **17 Efek Suara Real-time Lengkap**:
+               - Normal, Jokowi Soundbox, Cowo, Cewe, Lucu, Imut, Toa (Megaphone), Robot, HT Radio, Penyiar DJ, Monster, Helium, Masjid, Kakek, Telepon, Clarity, Echo.
             1. **🎤 Normal**: Suara asli mikrofon tanpa manipulasi.
             2. **🇮🇩 Jokowi (Soundbox)**: Vokal khas sengau Pak Jokowi dengan resonansi GoPay Soundbox.
             3. **👨 Cowo**: Suara pria berat / deep bass baritone.
