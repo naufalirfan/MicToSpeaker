@@ -10,7 +10,8 @@
 static constexpr float kPi = 3.14159265358979323846f;
 
 OboeAudioEngine::OboeAudioEngine()
-    : mPitchRing(kPitchRingSize, 0.0f),
+    : mJitterRing(kJitterRingSize, 0.0f),
+      mPitchRing(kPitchRingSize, 0.0f),
       mPcmRing(kRingSize, 0) {}
 
 OboeAudioEngine::~OboeAudioEngine() {
@@ -19,7 +20,6 @@ OboeAudioEngine::~OboeAudioEngine() {
 
 void OboeAudioEngine::setupJokowiFilter(int32_t sampleRate) {
     if (sampleRate <= 0) sampleRate = 48000;
-    // Karakter khas suara Pak Jokowi: Resonansi mid-nasal di ~1150 Hz dengan Q sedang & dorongan +6dB
     float f0 = 1150.0f;
     float Q = 2.0f;
     float gainDb = 6.0f;
@@ -61,12 +61,10 @@ float OboeAudioEngine::processPitchShift(float inSample, float pitchRatio) {
         return inSample;
     }
 
-    // Tulis sampel ke circular ring buffer
     mPitchRing[mPitchWritePos] = inSample;
     size_t currentWrite = mPitchWritePos;
     mPitchWritePos = (mPitchWritePos + 1) & kPitchMask;
 
-    // Majukan phase delay dengan rate = (1.0f - pitchRatio)
     float rate = 1.0f - pitchRatio;
     mPitchPhase1 += rate;
     if (mPitchPhase1 >= kPitchWindow) mPitchPhase1 -= kPitchWindow;
@@ -75,12 +73,10 @@ float OboeAudioEngine::processPitchShift(float inSample, float pitchRatio) {
     float phase2 = mPitchPhase1 + (kPitchWindow * 0.5f);
     if (phase2 >= kPitchWindow) phase2 -= kPitchWindow;
 
-    // Hanning crossfade window
     float norm1 = mPitchPhase1 / kPitchWindow;
     float w1 = 0.5f * (1.0f - std::cos(norm1 * 2.0f * kPi));
     float w2 = 1.0f - w1;
 
-    // Hitung posisi baca fractional
     float r1 = static_cast<float>(currentWrite) - mPitchPhase1;
     while (r1 < 0.0f) r1 += static_cast<float>(kPitchRingSize);
     while (r1 >= static_cast<float>(kPitchRingSize)) r1 -= static_cast<float>(kPitchRingSize);
@@ -89,13 +85,11 @@ float OboeAudioEngine::processPitchShift(float inSample, float pitchRatio) {
     while (r2 < 0.0f) r2 += static_cast<float>(kPitchRingSize);
     while (r2 >= static_cast<float>(kPitchRingSize)) r2 -= static_cast<float>(kPitchRingSize);
 
-    // Linear interpolation head 1
     size_t idx1_0 = static_cast<size_t>(r1) & kPitchMask;
     size_t idx1_1 = (idx1_0 + 1) & kPitchMask;
     float frac1 = r1 - std::floor(r1);
     float s1 = mPitchRing[idx1_0] * (1.0f - frac1) + mPitchRing[idx1_1] * frac1;
 
-    // Linear interpolation head 2
     size_t idx2_0 = static_cast<size_t>(r2) & kPitchMask;
     size_t idx2_1 = (idx2_0 + 1) & kPitchMask;
     float frac2 = r2 - std::floor(r2);
@@ -109,45 +103,52 @@ bool OboeAudioEngine::start(
     int32_t inputDeviceId,
     int32_t latencyMultiplier,
     bool isScoRoute,
+    bool isBluetooth,
     bool echoNoiseSuppression
 ) {
     stop();
 
-    // 1. Output Stream
+    LOGI("Memulai AudioEngine: isBluetooth=%d, isSco=%d, outDev=%d, inDev=%d",
+         isBluetooth, isScoRoute, outputDeviceId, inputDeviceId);
+
+    // 1. Output Stream Builder
     oboe::AudioStreamBuilder outBuilder;
     outBuilder.setDirection(oboe::Direction::Output)
         ->setFormat(oboe::AudioFormat::Float)
         ->setChannelCount(isScoRoute ? oboe::ChannelCount::Mono : oboe::ChannelCount::Stereo)
-        ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
         ->setSharingMode(oboe::SharingMode::Shared)
-        ->setUsage(isScoRoute
-            ? oboe::Usage::VoiceCommunication
-            : oboe::Usage::Media)
-        ->setContentType(isScoRoute
-            ? oboe::ContentType::Speech
-            : oboe::ContentType::Music)
+        ->setUsage(isScoRoute ? oboe::Usage::VoiceCommunication : oboe::Usage::Media)
+        ->setContentType(isScoRoute ? oboe::ContentType::Speech : oboe::ContentType::Music)
         ->setDataCallback(this)
         ->setErrorCallback(this);
 
-    if (outputDeviceId > 0) {
-        outBuilder.setDeviceId(outputDeviceId);
+    if (isBluetooth) {
+        // PENTING: Untuk Bluetooth (TWS A2DP / SCO):
+        // Wajib menggunakan OpenSL ES / PerformanceMode::None agar audio di-route oleh AudioFlinger Android
+        // AAudio LowLatency MMAP tidak mendukung Bluetooth A2DP dan akan memutar ke speaker ponsel internal.
+        outBuilder.setAudioApi(oboe::AudioApi::OpenSLES);
+        outBuilder.setPerformanceMode(oboe::PerformanceMode::None);
+        if (isScoRoute && outputDeviceId > 0) {
+            outBuilder.setDeviceId(outputDeviceId);
+        }
+    } else {
+        outBuilder.setPerformanceMode(oboe::PerformanceMode::LowLatency);
+        if (outputDeviceId > 0) {
+            outBuilder.setDeviceId(outputDeviceId);
+        }
     }
 
-    // Adaptive fallbacks
     oboe::Result outRes = outBuilder.openStream(mOutputStream);
     if (outRes != oboe::Result::OK) {
-        LOGI("Fallback 1 Output: Hapus deviceId");
+        LOGI("Fallback Output: Reset deviceId, AudioApi Unspecified & PerformanceMode None");
         outBuilder.setDeviceId(oboe::kUnspecified);
-        outRes = outBuilder.openStream(mOutputStream);
-    }
-    if (outRes != oboe::Result::OK) {
-        LOGI("Fallback 2 Output: ChannelCount Unspecified");
-        outBuilder.setChannelCount(oboe::ChannelCount::Unspecified);
-        outRes = outBuilder.openStream(mOutputStream);
-    }
-    if (outRes != oboe::Result::OK) {
-        LOGI("Fallback 3 Output: PerformanceMode None");
+        outBuilder.setAudioApi(oboe::AudioApi::Unspecified);
         outBuilder.setPerformanceMode(oboe::PerformanceMode::None);
+        outRes = outBuilder.openStream(mOutputStream);
+    }
+    if (outRes != oboe::Result::OK) {
+        LOGI("Fallback Output: ChannelCount Unspecified");
+        outBuilder.setChannelCount(oboe::ChannelCount::Unspecified);
         outRes = outBuilder.openStream(mOutputStream);
     }
 
@@ -187,18 +188,14 @@ bool OboeAudioEngine::start(
 
     oboe::Result inRes = inBuilder.openStream(mInputStream);
     if (inRes != oboe::Result::OK) {
-        LOGI("Fallback 1 Input: Coba native sample rate");
+        LOGI("Fallback Input: PerformanceMode None & Native sample rate");
+        inBuilder.setPerformanceMode(oboe::PerformanceMode::None);
         inBuilder.setSampleRate(oboe::kUnspecified);
         inRes = inBuilder.openStream(mInputStream);
     }
     if (inRes != oboe::Result::OK) {
-        LOGI("Fallback 2 Input: Hapus deviceId");
+        LOGI("Fallback Input: Reset deviceId");
         inBuilder.setDeviceId(oboe::kUnspecified);
-        inRes = inBuilder.openStream(mInputStream);
-    }
-    if (inRes != oboe::Result::OK) {
-        LOGI("Fallback 3 Input: PerformanceMode None");
-        inBuilder.setPerformanceMode(oboe::PerformanceMode::None);
         inRes = inBuilder.openStream(mInputStream);
     }
 
@@ -208,11 +205,11 @@ bool OboeAudioEngine::start(
         return false;
     }
 
-    // 3. Pre-alokasi buffer DSP (Zero runtime allocations di audio thread)
+    // 3. Pre-alokasi buffer DSP
     int32_t maxFrames = std::max(mOutputStream->getBufferCapacityInFrames(), 4096);
     mInputBuffer.assign(static_cast<size_t>(maxFrames), 0.0f);
 
-    size_t echoSamples = static_cast<size_t>(sampleRate * 0.18f); // 180 ms delay untuk Karaoke
+    size_t echoSamples = static_cast<size_t>(sampleRate * 0.18f);
     mEchoBuffer.assign(std::max<size_t>(echoSamples, 1), 0.0f);
     mEchoIndex = 0;
 
@@ -220,7 +217,7 @@ bool OboeAudioEngine::start(
     mPitchWritePos = 0;
     mPitchPhase1 = 0.0f;
 
-    size_t imutSamples = static_cast<size_t>(sampleRate * 0.035f); // 35 ms ambiance delay untuk Imut
+    size_t imutSamples = static_cast<size_t>(sampleRate * 0.035f);
     mImutEchoBuffer.assign(std::max<size_t>(imutSamples, 1), 0.0f);
     mImutEchoIndex = 0;
 
@@ -236,7 +233,12 @@ bool OboeAudioEngine::start(
     mRingWrite.store(0, std::memory_order_relaxed);
     mRingRead.store(0, std::memory_order_relaxed);
 
-    // 4. Start streams
+    mJitterRing.assign(kJitterRingSize, 0.0f);
+    mJitterWrite.store(0, std::memory_order_relaxed);
+    mJitterRead.store(0, std::memory_order_relaxed);
+    mJitterPrimed.store(false, std::memory_order_relaxed);
+
+    // 4. Start input & output streams
     if (mInputStream->requestStart() != oboe::Result::OK) {
         LOGE("Gagal start Input Stream");
         stop();
@@ -249,11 +251,42 @@ bool OboeAudioEngine::start(
         return false;
     }
 
-    LOGI("Oboe Full-Duplex aktif @ %d Hz | OutCh: %d | Burst: %d", sampleRate, mOutputChannels, burst);
+    // 5. Mulai Dedicated Background Capture Thread untuk Microphone
+    // Membaca audio mikrofon secara independen & mendorong ke lock-free Jitter Buffer.
+    // Ini mengeliminasi 100% masalah underrun / desinkronisasi clock antara mic dan Bluetooth.
+    mIsCapturing.store(true, std::memory_order_release);
+    mCaptureThread = std::thread([this]() {
+        int32_t burst = 192;
+        if (mInputStream) {
+            burst = mInputStream->getFramesPerBurst();
+            if (burst <= 0) burst = 192;
+        }
+        std::vector<float> readBuf(std::max(burst, 1024), 0.0f);
+
+        while (mIsCapturing.load(std::memory_order_relaxed)) {
+            if (!mInputStream) break;
+            auto result = mInputStream->read(readBuf.data(), burst, 40000000); // 40ms timeout
+            if (result && result.value() > 0) {
+                const int32_t count = result.value();
+                size_t w = mJitterWrite.load(std::memory_order_relaxed);
+                for (int32_t i = 0; i < count; ++i) {
+                    mJitterRing[w] = readBuf[i];
+                    w = (w + 1) & kJitterMask;
+                }
+                mJitterWrite.store(w, std::memory_order_release);
+            }
+        }
+    });
+
+    LOGI("Audio Engine Aktif @ %d Hz | OutCh: %d | isBluetooth: %d", sampleRate, mOutputChannels, isBluetooth);
     return true;
 }
 
 void OboeAudioEngine::stop() {
+    mIsCapturing.store(false, std::memory_order_release);
+    if (mCaptureThread.joinable()) {
+        mCaptureThread.join();
+    }
     if (mOutputStream) {
         mOutputStream->requestStop();
         mOutputStream->close();
@@ -322,30 +355,55 @@ oboe::DataCallbackResult OboeAudioEngine::onAudioReady(
     int32_t numFrames
 ) {
     auto* out = static_cast<float*>(audioData);
-    const int32_t framesToProcess = std::min<int32_t>(numFrames, static_cast<int32_t>(mInputBuffer.size()));
 
-    // Baca mikrofon dengan timeout 12ms agar data mikrofon stabil saat ada Bluetooth jitter
-    int32_t framesRead = 0;
-    if (mInputStream) {
-        auto result = mInputStream->read(mInputBuffer.data(), framesToProcess, 12000000); // 12 ms
-        if (result && result.value() > 0) {
-            framesRead = result.value();
+    // Ambil sampel suara dari lock-free Jitter Buffer (zero blocking / instant read)
+    size_t r = mJitterRead.load(std::memory_order_relaxed);
+    size_t w = mJitterWrite.load(std::memory_order_acquire);
+    size_t available = (w >= r) ? (w - r) : (kJitterRingSize - r + w);
+
+    // Initial pre-buffer watermark: tunggu minimal 1024 sampel (~21ms) sebelum drain
+    // untuk mencegah starving/glitching saat Bluetooth A2DP meminta buffer besar (512-1024 frames)
+    if (!mJitterPrimed.load(std::memory_order_relaxed)) {
+        if (available >= 1024) {
+            mJitterPrimed.store(true, std::memory_order_relaxed);
+        } else {
+            std::fill_n(out, numFrames * mOutputChannels, 0.0f);
+            return oboe::DataCallbackResult::Continue;
         }
     }
 
-    // Jika input belum penuh, isi sisanya dengan silence agar tidak berderau
-    for (int32_t i = framesRead; i < framesToProcess; ++i) {
-        mInputBuffer[i] = 0.0f;
+    // Drift / Overflow prevention:
+    // Jika delay bertambah di atas 4096 sampel (~85ms), pangkas ke 2048 sampel (~42ms)
+    // agar latensi selalu tetap sangat rendah tanpa glitch
+    if (available > 4096) {
+        size_t excess = available - 2048;
+        r = (r + excess) & kJitterMask;
+        available = 2048;
     }
 
-    // Hitung RMS frame
+    if (mInputBuffer.size() < static_cast<size_t>(numFrames)) {
+        mInputBuffer.resize(static_cast<size_t>(numFrames * 2), 0.0f);
+    }
+
+    for (int32_t i = 0; i < numFrames; ++i) {
+        float sample = 0.0f;
+        if (available > 0) {
+            sample = mJitterRing[r];
+            r = (r + 1) & kJitterMask;
+            available--;
+        }
+        mInputBuffer[i] = sample;
+    }
+    mJitterRead.store(r, std::memory_order_release);
+
+    // Hitung RMS untuk visualizer
     double sumSq = 0.0;
-    for (int32_t i = 0; i < framesToProcess; ++i) {
+    for (int32_t i = 0; i < numFrames; ++i) {
         double s = mInputBuffer[i];
         sumSq += s * s;
     }
-    const float rms = (framesToProcess > 0)
-        ? static_cast<float>(std::sqrt(sumSq / framesToProcess))
+    const float rms = (numFrames > 0)
+        ? static_cast<float>(std::sqrt(sumSq / numFrames))
         : 0.0f;
 
     const float gain = mGain.load(std::memory_order_relaxed);
@@ -357,21 +415,13 @@ oboe::DataCallbackResult OboeAudioEngine::onAudioReady(
     const float gateTarget = (muted || (gateThresh > 0.0f && rms < gateThresh)) ? 0.0f : 1.0f;
     const size_t echoSize = mEchoBuffer.size();
 
-    for (int32_t i = 0; i < framesToProcess; ++i) {
+    for (int32_t i = 0; i < numFrames; ++i) {
         const float coeff = (gateTarget > mGateEnvelope) ? 0.15f : 0.01f;
         mGateEnvelope += (gateTarget - mGateEnvelope) * coeff;
 
         float sample = mInputBuffer[i] * mGateEnvelope;
 
-        // Pemrosesan Efek Suara (Voice Effects):
-        // 0 = NATURAL (Normal)
-        // 1 = COWO (Suara Cowok Bass Berat)
-        // 2 = CEWE (Suara Cewek Nyaring Natural)
-        // 3 = LUCU (Suara Kartun / Chipmunk Tinggi)
-        // 4 = IMUT (Suara Imut Kawaii / Anime)
-        // 5 = JOKOWI (Khas Suara Pak Jokowi - Nasal Mid-Range & Relaxed Tone)
-        // 6 = VOICE_CLARITY (Kejernihan Suara / HPF)
-        // 7 = KARAOKE_ECHO (Gema Karaoke)
+        // Pemrosesan Efek Suara (Voice Effects)
         switch (preset) {
             case 1: { // COWO (Deep Male)
                 float pitched = processPitchShift(sample, 0.76f);
@@ -391,7 +441,7 @@ oboe::DataCallbackResult OboeAudioEngine::onAudioReady(
                 sample = processPitchShift(sample, 1.68f) * 1.1f;
                 break;
             }
-            case 4: { // IMUT (Cute / Anime)
+            case 4: { // IMUT (Cute Anime / Kawaii)
                 float pitched = processPitchShift(sample, 1.44f);
                 if (!mImutEchoBuffer.empty()) {
                     float delayed = mImutEchoBuffer[mImutEchoIndex];
@@ -432,7 +482,7 @@ oboe::DataCallbackResult OboeAudioEngine::onAudioReady(
         // Gain + Soft Clipping
         const float outSample = std::tanh(sample * gain);
 
-        // Tulis ke buffer output (otomatis handle mono atau stereo)
+        // Tulis ke buffer output (mono atau stereo)
         if (mOutputChannels == 1) {
             out[i] = outSample;
         } else {
@@ -441,16 +491,11 @@ oboe::DataCallbackResult OboeAudioEngine::onAudioReady(
             }
         }
 
-        // Tulis ke SPSC ring buffer jika rekam WAV aktif
+        // Tulis ke WAV buffer jika rekam aktif
         if (recording) {
             const float clamped = std::clamp(outSample, -1.0f, 1.0f);
             pushPcmSample(static_cast<int16_t>(clamped * 32767.0f));
         }
-    }
-
-    // Jika numFrames melebihi mInputBuffer, nol-kan sisanya
-    for (int32_t i = framesToProcess * mOutputChannels; i < numFrames * mOutputChannels; ++i) {
-        out[i] = 0.0f;
     }
 
     mLatestRms.store(muted ? 0.0f : std::clamp(rms * gain, 0.0f, 1.0f), std::memory_order_relaxed);

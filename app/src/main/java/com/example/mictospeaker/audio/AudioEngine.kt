@@ -45,16 +45,27 @@ class AudioEngine(private val context: Context) {
         val resolvedScoDevice = configureRouting(initialConfig)
         updateConfig(initialConfig)
 
+        val preferred = initialConfig.preferredOutputDevice
+        val isBluetooth = when {
+            preferred != null -> isBluetoothDeviceType(preferred.type)
+            else -> audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any { isBluetoothDeviceType(it.type) }
+        }
+
         val isSco = initialConfig.outputRoute == OutputRoute.VOICE_SCO
         val outputDeviceId = when {
             isSco && resolvedScoDevice != null -> resolvedScoDevice.id
-            !isSco && initialConfig.preferredOutputDevice != null -> initialConfig.preferredOutputDevice.id
+            !isSco && !isBluetooth && initialConfig.preferredOutputDevice != null -> initialConfig.preferredOutputDevice.id
             else -> 0
         }
 
         // Cari mikrofon bawaan ponsel (Internal Phone Mic)
         val builtinMic = audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
             .firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_MIC }
+            ?: audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS).firstOrNull {
+                it.type != AudioDeviceInfo.TYPE_BLUETOOTH_SCO &&
+                it.type != AudioDeviceInfo.TYPE_BLUETOOTH_A2DP &&
+                it.type != AudioDeviceInfo.TYPE_BLE_HEADSET
+            }
 
         // PENTING: Pada mode Musik/Speaker (A2DP / TWS / Aux / USB), profil A2DP adalah output-only (tidak ada mic uplink).
         // Jika inputDeviceId disetel ke 0, sistem Android default-nya mencoba merekam dari TWS Bluetooth yang menghasilkan SILENCE (Gada Suara).
@@ -64,13 +75,14 @@ class AudioEngine(private val context: Context) {
             else -> builtinMic?.id ?: 0
         }
 
-        Log.i("AudioEngine", "Starting Oboe: OutDev=$outputDeviceId, InDev=$inputDeviceId, isSco=$isSco, LatencyMult=${initialConfig.latencyMode.bufferMultiplier}")
+        Log.i("AudioEngine", "Starting Oboe: OutDev=$outputDeviceId, InDev=$inputDeviceId, isSco=$isSco, isBt=$isBluetooth, LatencyMult=${initialConfig.latencyMode.bufferMultiplier}")
 
         val started = bridge.start(
             outputDeviceId = outputDeviceId,
             inputDeviceId = inputDeviceId,
             latencyMultiplier = initialConfig.latencyMode.bufferMultiplier,
             isScoRoute = isSco,
+            isBluetooth = isBluetooth,
             echoSuppression = initialConfig.echoNoiseSuppression
         )
 
@@ -156,6 +168,15 @@ class AudioEngine(private val context: Context) {
                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && type == AudioDeviceInfo.TYPE_BLE_BROADCAST)
     }
 
+    private fun isBluetoothDeviceType(type: Int): Boolean {
+        return type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+               type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+               type == AudioDeviceInfo.TYPE_BLE_HEADSET ||
+               type == AudioDeviceInfo.TYPE_BLE_SPEAKER ||
+               type == AudioDeviceInfo.TYPE_HEARING_AID ||
+               (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && type == AudioDeviceInfo.TYPE_BLE_BROADCAST)
+    }
+
     private fun releaseRouting() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             audioManager.clearCommunicationDevice()
@@ -176,9 +197,15 @@ class AudioEngine(private val context: Context) {
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val contentType = if (route == OutputRoute.VOICE_SCO) {
+                AudioAttributes.CONTENT_TYPE_SPEECH
+            } else {
+                AudioAttributes.CONTENT_TYPE_MUSIC
+            }
+
             val attr = AudioAttributes.Builder()
                 .setUsage(usage)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .setContentType(contentType)
                 .build()
 
             val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)

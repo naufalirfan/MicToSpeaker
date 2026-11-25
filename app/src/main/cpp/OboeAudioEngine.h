@@ -4,6 +4,7 @@
 #include <atomic>
 #include <memory>
 #include <vector>
+#include <thread>
 #include <cstdint>
 
 class OboeAudioEngine : public oboe::AudioStreamDataCallback,
@@ -17,6 +18,7 @@ public:
         int32_t inputDeviceId,
         int32_t latencyMultiplier,
         bool isScoRoute,
+        bool isBluetooth,
         bool echoNoiseSuppression
     );
     void stop();
@@ -51,6 +53,18 @@ private:
     std::vector<float> mInputBuffer;
     std::vector<float> mEchoBuffer;
     size_t mEchoIndex = 0;
+
+    // Jitter Ring Buffer antara thread capture mic dan output callback
+    static constexpr size_t kJitterRingSize = 32768; // ~680ms @ 48kHz
+    static constexpr size_t kJitterMask = kJitterRingSize - 1;
+    std::vector<float> mJitterRing;
+    std::atomic<size_t> mJitterWrite{0};
+    std::atomic<size_t> mJitterRead{0};
+    std::atomic<bool> mJitterPrimed{false};
+
+    // Dedicated Capture Thread untuk microphone
+    std::atomic<bool> mIsCapturing{false};
+    std::thread mCaptureThread;
 
     // Pitch shifter state (Dual delay-line with overlapping crossfade)
     static constexpr size_t kPitchRingSize = 4096;

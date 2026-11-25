@@ -8,10 +8,11 @@ class OboeNativeBridge {
         inputDeviceId: Int,
         latencyMultiplier: Int,
         isScoRoute: Boolean,
+        isBluetooth: Boolean,
         echoSuppression: Boolean
     ): Boolean = nativeStart(
         nativeHandle, outputDeviceId, inputDeviceId,
-        latencyMultiplier, isScoRoute, echoSuppression
+        latencyMultiplier, isScoRoute, isBluetooth, echoSuppression
     )
 
     fun stop() = nativeStop(nativeHandle)
@@ -36,7 +37,7 @@ class OboeNativeBridge {
     private external fun nativeDestroy(handle: Long)
     private external fun nativeStart(
         handle: Long, outputDeviceId: Int, inputDeviceId: Int,
-        latencyMultiplier: Int, isScoRoute: Boolean, echoSuppression: Boolean
+        latencyMultiplier: Int, isScoRoute: Boolean, isBluetooth: Boolean, echoSuppression: Boolean
     ): Boolean
     private external fun nativeStop(handle: Long)
     private external fun nativeUpdateParams(

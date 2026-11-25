@@ -21,13 +21,13 @@ JNIEXPORT jboolean JNICALL
 Java_com_example_mictospeaker_audio_OboeNativeBridge_nativeStart(
     JNIEnv*, jobject, jlong handle,
     jint outputDeviceId, jint inputDeviceId,
-    jint latencyMultiplier, jboolean isScoRoute, jboolean echoSuppression
+    jint latencyMultiplier, jboolean isScoRoute, jboolean isBluetooth, jboolean echoSuppression
 ) {
     auto* engine = asEngine(handle);
     if (!engine) return JNI_FALSE;
     return engine->start(
         outputDeviceId, inputDeviceId, latencyMultiplier,
-        isScoRoute == JNI_TRUE, echoSuppression == JNI_TRUE
+        isScoRoute == JNI_TRUE, isBluetooth == JNI_TRUE, echoSuppression == JNI_TRUE
     ) ? JNI_TRUE : JNI_FALSE;
 }
 
