@@ -90,7 +90,7 @@ bool OboeAudioEngine::start(
         ->setSharingMode(oboe::SharingMode::Shared)
         ->setInputPreset(echoNoiseSuppression
             ? oboe::InputPreset::VoiceCommunication
-            : oboe::InputPreset::Mic)
+            : oboe::InputPreset::Generic)
         ->setErrorCallback(this);
 
     if (inputDeviceId > 0) {
