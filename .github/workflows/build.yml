@@ -50,6 +50,13 @@ jobs:
           fi
           ls -la release-apks/
 
+      - name: Verify APK Signatures
+        run: |
+          for apk in release-apks/*.apk; do
+            echo "=== Verifying signature for $apk ==="
+            $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose "$apk"
+          done
+
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -61,16 +68,24 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: v1.0.2
-          name: "Mic to Speaker - NFL v1.0.2 (Voice Effects)"
+          tag_name: v1.0.3
+          name: "Mic to Speaker - NFL v1.0.3 (Fixed Signed APK)"
           body: |
-            ## Mic to Speaker - NFL v1.0.2 (Voice Effects)
+            ## Mic to Speaker - NFL v1.0.3 (Fixed Signed APK)
             Automated build from commit ${{ github.sha }}.
             
-            ### Fitur Baru: Efek Pengubah Suara Real-time (Voice Changer)
-            Tersedia langsung di layar utama (1-tap) dan menu Settings:
-            - **👨 Cowo**: Suara pria berat / deep bass voice (pitch shift down + low-pass chest warmth).
-            - **👩 Cewe**: Suara wanita nyaring natural (pitch shift up + vocal clarity presence).
+            ### Perbaikan Error "Aplikasi Tidak Terinstal":
+            - **Permanent Keystore & Full APK Signature Scheme**:
+              - Menggunakan permanent release keystore (`keystore/release.jks`) untuk kedua build (Release & Debug).
+              - Skema v1 (JAR Signature) & v2 (Full APK Signature) aktif permanen sehingga Android 10, 11, 12, 13, 14, dan 15 dapat menginstal dan memperbarui aplikasi tanpa masalah kompatibilitas sertifikat.
+            - **Universal ABI Support**:
+              - Mendukung native architecture `arm64-v8a`, `armeabi-v7a`, `x86_64`, dan `x86`.
+            - **Automated Signature Verification**:
+              - CI memverifikasi keabsahan signature menggunakan `apksigner` sebelum merilis file.
+            
+            ### Fitur Efek Suara (Voice Effects):
+            - **👨 Cowo**: Suara pria berat / deep bass voice.
+            - **👩 Cewe**: Suara wanita nyaring natural.
             - **🐹 Lucu**: Suara kartun / chipmunk yang lucu dan menggemaskan.
             - **🌸 Imut**: Suara anime / kawaii manis dengan subtle soft ambiance.
             - **🇮🇩 Jokowi**: Khas karakter vokal Pak Jokowi dengan resonansi mid-nasal (1150 Hz bandpass filter) dan nada santai.
@@ -78,7 +93,7 @@ jobs:
             - **🎶 Echo**: Gema karaoke stereo.
             - **🎤 Normal**: Suara asli mikrofon tanpa efek.
             
-            - **MicToSpeaker-release.apk**: Optimized release build (ProGuard / R8 enabled, signed with debug keystore for easy sideloading).
+            - **MicToSpeaker-release.apk**: Optimized release build (ProGuard / R8 enabled, signed with permanent release key).
             - **MicToSpeaker-debug.apk**: Debug build with logcat output enabled.
           prerelease: false
           files: release-apks/*.apk
