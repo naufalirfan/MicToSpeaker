@@ -68,31 +68,38 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: v1.0.6
-          name: "Mic to Speaker - NFL v1.0.6 (Soft Limiter, 3-Band EQ & YouTube Karaoke Mixing)"
+          tag_name: v1.0.7
+          name: "Mic to Speaker - NFL v1.0.7 (17 Real-time Voice Effects)"
           body: |
-            ## Mic to Speaker - NFL v1.0.6 (Soft Limiter, 3-Band EQ & YouTube Karaoke Mixing)
+            ## Mic to Speaker - NFL v1.0.7 (17 Real-time Voice Effects)
             Automated build from commit ${{ github.sha }}.
             
-            ### Fitur Baru & Peningkatan DSP (Sesuai Panduan Audio Engine C++):
-            - **Soft Limiter (Zero-Latency Anti-Clipping)**:
-              - Sinyal di bawah 0.8f (-2 dBFS) tetap 100% linear tanpa perubahan warna suara.
-              - Transisi soft-knee saturasi tanh dinamis di atas ambang batas, mencegah suara nguing (feedback), distorsi pecah, dan kerusakan speaker saat volume/gain tinggi.
-            - **3-Band Equalizer (Thread-Safe DSP)**:
-              - Low-Shelf 200 Hz, Peaking 1000 Hz, High-Shelf 4000 Hz di dalam callback C++ Oboe.
-            - **Preserving YouTube Karaoke Audio Mixing**:
-              - Pengaturan AudioFocus cerdas (`AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` pada media route) sehingga musik dari YouTube atau Spotify tidak ter-pause saat mic dinyalakan. Suara mic dan musik ter-mix bersamaan ke speaker Bluetooth/AUX.
-            - **Preset Baru (Megaphone & Robot)**:
-              - **📢 Toa / Megaphone**: Bandpass 600–2800 Hz dengan distorsi corong khas pengumuman.
-              - **🤖 Robot**: Ring modulation sinus 70 Hz (85% wet / 15% dry).
-            - **Aksi Cepat di Notifikasi**:
-              - Tombol "Matikan" langsung di notification bar untuk menghentikan audio tanpa membuka aplikasi.
+            ### Daftar 17 Efek Suara Real-time Lengkap:
+            1. **🎤 Normal**: Suara asli mikrofon tanpa manipulasi.
+            2. **🇮🇩 Jokowi (Soundbox)**: Vokal khas sengau Pak Jokowi dengan resonansi GoPay Soundbox.
+            3. **👨 Cowo**: Suara pria berat / deep bass baritone.
+            4. **👩 Cewe**: Suara wanita nyaring natural.
+            5. **🐹 Lucu**: Karakter kartun chipmunk ceria.
+            6. **🌸 Imut**: Karakter anime / kawaii manis dengan ambient halus.
+            7. **📢 Toa**: Suara corong megaphone / pengumuman bandpass.
+            8. **🤖 Robot**: Ring modulation cybernetic 70 Hz.
+            9. **📻 HT Radio**: Walkie-talkie polisi/satpam dengan bandpass ketat & radio static squelch.
+            10. **🎧 Penyiar DJ**: Karakter vokal radio FM broadcast tebal & hangat (proximity bass + presence).
+            11. **👻 Monster**: Suara raksasa berat & menyeramkan (pitch 0.64x + sub-growl).
+            12. **🎈 Helium**: Suara balon helium pitch super tinggi melengking (pitch 1.85x).
+            13. **🏛️ Masjid**: Gema reverberasi megah kubah masjid / aula katedral.
+            14. **👴 Kakek**: Suara orang tua dengan tremor getaran pita suara lembut (5.5 Hz LFO).
+            15. **📱 Telepon**: Karakter telepon kabel analog jadul (carbon mic bandpass).
+            16. **🎙️ Clarity**: Mode vokal jernih bebas dengung (High-Pass Filter).
+            17. **🎶 Echo**: Gema karaoke stereo.
             
-            ### Fitur Utama Sebelumnya:
-            - Routing lancar Bluetooth TWS / A2DP & SCO tanpa hening (OpenSL ES + AudioFlinger).
-            - Efek Suara GoPay Soundbox Jokowi (multi-stage RBJ formant modeling & cabinet reflection).
-            - Decoupled mic capture thread dengan auto-priming watermark (~21ms) dan auto-drift limiter.
-            - Permanent Keystore release signing (v1 + v2 scheme).
+            ### Fitur Unggulan Sistem:
+            - **Soft Limiter (Zero-Latency Anti-Clipping)**: Suara di bawah 0.8f linear 100%, kompresi soft-knee tanh di atas ambang batas mencegah distorsi/feedback.
+            - **3-Band Equalizer**: Low-Shelf 200 Hz, Peaking 1000 Hz, High-Shelf 4000 Hz.
+            - **YouTube & Spotify Karaoke Mixing**: Musik tidak ter-pause saat mic aktif (Shared AudioFocus).
+            - **Routing Lancar TWS & Bluetooth**: OpenSL ES + AudioFlinger tanpa hening.
+            - **Tombol Matikan Cepat**: Di notifikasi status bar.
+            - **Permanent Release Keystore**: APK ditandatangani skema v1 + v2 permanen.
             
             - **MicToSpeaker-release.apk**: Optimized release build (ProGuard / R8 enabled, signed with permanent key).
             - **MicToSpeaker-debug.apk**: Debug build with logcat output enabled.

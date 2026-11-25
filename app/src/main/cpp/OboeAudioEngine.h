@@ -275,6 +275,35 @@ private:
     BiquadFilter mMegaLpf;
     float mRobotPhase = 0.0f;
 
+    // 10: Radio HT / Walkie-Talkie (Bandpass 450-2600Hz, mid boost 1800Hz, noise squelch)
+    BiquadFilter mHtHpf;
+    BiquadFilter mHtLpf;
+    BiquadFilter mHtMid;
+    uint32_t mNoiseSeed = 123456789;
+
+    // 11: Broadcast DJ / Podcaster (Proximity LowShelf 120Hz + Presence 3200Hz)
+    BiquadFilter mDjBass;
+    BiquadFilter mDjPresence;
+
+    // 12: Monster (LowShelf 140Hz growl)
+    BiquadFilter mMonsterBass;
+
+    // 13: Helium (Low-cut HPF 500Hz)
+    BiquadFilter mHeliumHpf;
+
+    // 14: Masjid / Grand Hall Reverb (~140ms multi-tap circular buffer)
+    std::vector<float> mHallBuffer;
+    size_t mHallIndex = 0;
+
+    // 15: Kakek (Nasal 1350Hz + 5.5Hz vocal tremor LFO)
+    BiquadFilter mKakekNasal;
+    float mKakekPhase = 0.0f;
+
+    // 16: Telepon Jadul (HPF 300Hz, LPF 3400Hz, Peaking 1500Hz)
+    BiquadFilter mPhoneHpf;
+    BiquadFilter mPhoneLpf;
+    BiquadFilter mPhoneMid;
+
     void setupJokowiFilter(int32_t sampleRate);
     float processPitchShift(float inSample, float pitchRatio);
     float processJokowiFilter(float inSample);

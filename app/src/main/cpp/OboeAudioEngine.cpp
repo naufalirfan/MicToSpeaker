@@ -248,6 +248,43 @@ bool OboeAudioEngine::start(
     mRobotPhase = 0.0f;
     mSoftLimiter.setThreshold(0.8f);
 
+    const float fs = static_cast<float>(sampleRate);
+
+    // 10: Radio HT / Walkie-Talkie
+    mHtHpf.setHPF(450.0f, 0.707f, fs);
+    mHtLpf.setLPF(2600.0f, 0.707f, fs);
+    mHtMid.setPeaking(1800.0f, 2.2f, 4.5f, fs);
+    mHtHpf.reset(); mHtLpf.reset(); mHtMid.reset();
+
+    // 11: Broadcast DJ / Podcaster
+    mDjBass.setLowShelf(120.0f, 0.707f, 5.0f, fs);
+    mDjPresence.setPeaking(3200.0f, 1.8f, 4.0f, fs);
+    mDjBass.reset(); mDjPresence.reset();
+
+    // 12: Monster
+    mMonsterBass.setLowShelf(140.0f, 0.707f, 6.0f, fs);
+    mMonsterBass.reset();
+
+    // 13: Helium
+    mHeliumHpf.setHPF(500.0f, 0.707f, fs);
+    mHeliumHpf.reset();
+
+    // 14: Masjid / Grand Hall Reverb (~140ms multi-tap circular buffer)
+    size_t hallSamples = static_cast<size_t>(fs * 0.14f);
+    mHallBuffer.assign(std::max<size_t>(hallSamples, 1), 0.0f);
+    mHallIndex = 0;
+
+    // 15: Kakek
+    mKakekNasal.setPeaking(1350.0f, 2.5f, 4.0f, fs);
+    mKakekNasal.reset();
+    mKakekPhase = 0.0f;
+
+    // 16: Telepon Jadul
+    mPhoneHpf.setHPF(300.0f, 0.707f, fs);
+    mPhoneLpf.setLPF(3400.0f, 0.707f, fs);
+    mPhoneMid.setPeaking(1500.0f, 2.0f, 6.0f, fs);
+    mPhoneHpf.reset(); mPhoneLpf.reset(); mPhoneMid.reset();
+
     mRingWrite.store(0, std::memory_order_relaxed);
     mRingRead.store(0, std::memory_order_relaxed);
 
@@ -507,6 +544,56 @@ oboe::DataCallbackResult OboeAudioEngine::onAudioReady(
                 mRobotPhase += 2.0f * kPi * 70.0f / static_cast<float>(mSampleRate.load(std::memory_order_relaxed));
                 if (mRobotPhase >= 2.0f * kPi) mRobotPhase -= 2.0f * kPi;
                 sample = (sample * carrier * 0.85f) + (sample * 0.15f);
+                break;
+            }
+            case 10: { // RADIO HT / WALKIE-TALKIE
+                float bp = mHtLpf.process(mHtHpf.process(sample));
+                bp = mHtMid.process(bp);
+                mNoiseSeed = (mNoiseSeed * 1664525u + 1013904223u);
+                float noise = (static_cast<float>(mNoiseSeed & 0x7FFFFFFF) / 1073741824.0f - 1.0f) * 0.012f;
+                float distorted = std::tanh((bp + (rms > 0.02f ? noise : 0.0f)) * 2.8f);
+                sample = distorted * 0.82f;
+                break;
+            }
+            case 11: { // BROADCAST DJ / PODCASTER
+                float warm = mDjBass.process(sample);
+                warm = mDjPresence.process(warm);
+                sample = std::tanh(warm * 1.35f) * 0.95f;
+                break;
+            }
+            case 12: { // MONSTER / DEMON
+                float pitched = processPitchShift(sample, 0.64f);
+                float boosted = mMonsterBass.process(pitched);
+                sample = std::tanh(boosted * 1.6f) * 0.90f;
+                break;
+            }
+            case 13: { // HELIUM
+                float pitched = processPitchShift(sample, 1.85f);
+                sample = mHeliumHpf.process(pitched) * 1.05f;
+                break;
+            }
+            case 14: { // MASJID / GRAND HALL REVERB
+                if (!mHallBuffer.empty()) {
+                    float delayed = mHallBuffer[mHallIndex];
+                    float mixed = sample + (delayed * 0.45f);
+                    mHallBuffer[mHallIndex] = mixed * 0.72f;
+                    mHallIndex = (mHallIndex + 1) % mHallBuffer.size();
+                    sample = (sample * 0.68f) + (delayed * 0.42f);
+                }
+                break;
+            }
+            case 15: { // KAKEK
+                float pitched = processPitchShift(sample, 0.83f);
+                mKakekPhase += 2.0f * kPi * 5.5f / static_cast<float>(mSampleRate.load(std::memory_order_relaxed));
+                if (mKakekPhase >= 2.0f * kPi) mKakekPhase -= 2.0f * kPi;
+                float tremor = 1.0f + (0.18f * std::sin(mKakekPhase));
+                sample = mKakekNasal.process(pitched * tremor);
+                break;
+            }
+            case 16: { // TELEPON JADUL
+                float filtered = mPhoneLpf.process(mPhoneHpf.process(sample));
+                filtered = mPhoneMid.process(filtered);
+                sample = std::tanh(filtered * 2.2f) * 0.85f;
                 break;
             }
             default: // NATURAL (Bypass)
