@@ -19,41 +19,51 @@ OboeAudioEngine::~OboeAudioEngine() {
 }
 
 void OboeAudioEngine::setupJokowiFilter(int32_t sampleRate) {
-    if (sampleRate <= 0) sampleRate = 48000;
-    float f0 = 1150.0f;
-    float Q = 2.0f;
-    float gainDb = 6.0f;
-    float A = std::pow(10.0f, gainDb / 40.0f);
-    float w0 = 2.0f * kPi * f0 / static_cast<float>(sampleRate);
-    float alpha = std::sin(w0) / (2.0f * Q);
+    float fs = (sampleRate > 0) ? static_cast<float>(sampleRate) : 48000.0f;
+    // Multi-stage GoPay Soundbox Jokowi Filters:
+    // 1. Box Speaker HPF: potong suara dada berat di bawah 240 Hz
+    mJokowiHpf.setHPF(240.0f, 0.707f, fs);
+    // 2. Chest Scoop: reduksi ~500 Hz (-5.5 dB) agar vokal tidak tebal biasa, melainkan sengau khas
+    mJokowiDip.setPeaking(500.0f, 1.8f, -5.5f, fs);
+    // 3. Nasal Peak: karakter sengau vokal Solo di 1220 Hz (+9.5 dB)
+    mJokowiNasal.setPeaking(1220.0f, 2.5f, 9.5f, fs);
+    // 4. Throat & Articulation Peak: di 2550 Hz (+6.5 dB) untuk artikulasi kata yang jelas
+    mJokowiThroat.setPeaking(2550.0f, 2.8f, 6.5f, fs);
+    // 5. Box Speaker LPF: karakteristik speaker soundbox portabel di 4600 Hz
+    mJokowiLpf.setLPF(4600.0f, 0.707f, fs);
 
-    float b0 = 1.0f + (alpha * A);
-    float b1 = -2.0f * std::cos(w0);
-    float b2 = 1.0f - (alpha * A);
-    float a0 = 1.0f + (alpha / A);
-    float a1 = -2.0f * std::cos(w0);
-    float a2 = 1.0f - (alpha / A);
+    mJokowiHpf.reset();
+    mJokowiDip.reset();
+    mJokowiNasal.reset();
+    mJokowiThroat.reset();
+    mJokowiLpf.reset();
 
-    mJokowiB0 = b0 / a0;
-    mJokowiB1 = b1 / a0;
-    mJokowiB2 = b2 / a0;
-    mJokowiA1 = a1 / a0;
-    mJokowiA2 = a2 / a0;
-
-    mJokowiX1 = 0.0f;
-    mJokowiX2 = 0.0f;
-    mJokowiY1 = 0.0f;
-    mJokowiY2 = 0.0f;
+    // Cabinet acoustic reflection: delay pendek (~22ms) memberikan nuansa fisik speaker GoPay Soundbox
+    size_t boxSamples = static_cast<size_t>(fs * 0.022f);
+    mJokowiBoxBuffer.assign(std::max<size_t>(boxSamples, 1), 0.0f);
+    mJokowiBoxIndex = 0;
 }
 
 inline float OboeAudioEngine::processJokowiFilter(float inSample) {
-    float outSample = (mJokowiB0 * inSample) + (mJokowiB1 * mJokowiX1) + (mJokowiB2 * mJokowiX2)
-                      - (mJokowiA1 * mJokowiY1) - (mJokowiA2 * mJokowiY2);
-    mJokowiX2 = mJokowiX1;
-    mJokowiX1 = inSample;
-    mJokowiY2 = mJokowiY1;
-    mJokowiY1 = outSample;
-    return outSample;
+    // 1. Filter formants multi-stage
+    float s = mJokowiHpf.process(inSample);
+    s = mJokowiDip.process(s);
+    s = mJokowiNasal.process(s);
+    s = mJokowiThroat.process(s);
+    s = mJokowiLpf.process(s);
+
+    // 2. Speaker overdrive & harmonic saturation khas amplifier portable soundbox
+    float drive = s * 1.25f;
+    float saturated = drive - (0.16f * drive * drive * drive) + (0.04f * drive * drive);
+
+    // 3. Cabinet box reflection
+    if (!mJokowiBoxBuffer.empty()) {
+        float delayed = mJokowiBoxBuffer[mJokowiBoxIndex];
+        mJokowiBoxBuffer[mJokowiBoxIndex] = saturated + (delayed * 0.18f);
+        mJokowiBoxIndex = (mJokowiBoxIndex + 1) % mJokowiBoxBuffer.size();
+        return (saturated * 0.85f) + (delayed * 0.25f);
+    }
+    return saturated;
 }
 
 float OboeAudioEngine::processPitchShift(float inSample, float pitchRatio) {
@@ -453,9 +463,9 @@ oboe::DataCallbackResult OboeAudioEngine::onAudioReady(
                 }
                 break;
             }
-            case 5: { // JOKOWI (Khas Pak Jokowi)
-                float pitched = processPitchShift(sample, 0.93f);
-                sample = processJokowiFilter(pitched) * 1.05f;
+            case 5: { // JOKOWI (Khas Pak Jokowi / GoPay Soundbox)
+                float pitched = processPitchShift(sample, 0.89f);
+                sample = processJokowiFilter(pitched) * 1.15f;
                 break;
             }
             case 6: { // VOICE_CLARITY

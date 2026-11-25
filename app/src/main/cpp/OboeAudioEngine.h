@@ -88,16 +88,78 @@ private:
     float mPrevCeweIn = 0.0f;
     float mPrevCeweOut = 0.0f;
 
-    // Jokowi Biquad Resonant Formant Filter
-    float mJokowiB0 = 1.0f;
-    float mJokowiB1 = 0.0f;
-    float mJokowiB2 = 0.0f;
-    float mJokowiA1 = 0.0f;
-    float mJokowiA2 = 0.0f;
-    float mJokowiX1 = 0.0f;
-    float mJokowiX2 = 0.0f;
-    float mJokowiY1 = 0.0f;
-    float mJokowiY2 = 0.0f;
+    // RBJ Biquad Filter untuk real-time formant & acoustic modeling
+    struct BiquadFilter {
+        float b0 = 1.0f, b1 = 0.0f, b2 = 0.0f;
+        float a1 = 0.0f, a2 = 0.0f;
+        float x1 = 0.0f, x2 = 0.0f;
+        float y1 = 0.0f, y2 = 0.0f;
+
+        inline float process(float in) {
+            float out = (b0 * in) + (b1 * x1) + (b2 * x2) - (a1 * y1) - (a2 * y2);
+            x2 = x1;
+            x1 = in;
+            y2 = y1;
+            y1 = out;
+            return out;
+        }
+
+        void reset() {
+            x1 = x2 = y1 = y2 = 0.0f;
+        }
+
+        void setPeaking(float f0, float Q, float gainDb, float fs) {
+            if (fs <= 0.0f) fs = 48000.0f;
+            float A = std::pow(10.0f, gainDb / 40.0f);
+            float w0 = 2.0f * 3.14159265358979323846f * f0 / fs;
+            float alpha = std::sin(w0) / (2.0f * Q);
+            float a0 = 1.0f + (alpha / A);
+            b0 = (1.0f + (alpha * A)) / a0;
+            b1 = (-2.0f * std::cos(w0)) / a0;
+            b2 = (1.0f - (alpha * A)) / a0;
+            a1 = (-2.0f * std::cos(w0)) / a0;
+            a2 = (1.0f - (alpha / A)) / a0;
+        }
+
+        void setHPF(float f0, float Q, float fs) {
+            if (fs <= 0.0f) fs = 48000.0f;
+            float w0 = 2.0f * 3.14159265358979323846f * f0 / fs;
+            float alpha = std::sin(w0) / (2.0f * Q);
+            float a0 = 1.0f + alpha;
+            b0 = ((1.0f + std::cos(w0)) * 0.5f) / a0;
+            b1 = (-(1.0f + std::cos(w0))) / a0;
+            b2 = ((1.0f + std::cos(w0)) * 0.5f) / a0;
+            a1 = (-2.0f * std::cos(w0)) / a0;
+            a2 = (1.0f - alpha) / a0;
+        }
+
+        void setLPF(float f0, float Q, float fs) {
+            if (fs <= 0.0f) fs = 48000.0f;
+            float w0 = 2.0f * 3.14159265358979323846f * f0 / fs;
+            float alpha = std::sin(w0) / (2.0f * Q);
+            float a0 = 1.0f + alpha;
+            b0 = ((1.0f - std::cos(w0)) * 0.5f) / a0;
+            b1 = (1.0f - std::cos(w0)) / a0;
+            b2 = ((1.0f - std::cos(w0)) * 0.5f) / a0;
+            a1 = (-2.0f * std::cos(w0)) / a0;
+            a2 = (1.0f - alpha) / a0;
+        }
+    };
+
+    // GoPay Soundbox Jokowi Acoustic & Formant Chain:
+    // 1. Box Speaker HPF (potong sub-bass boomy di 240 Hz)
+    // 2. Chest scoop (reduksi 500 Hz agar tidak terdengar suara cowo tebal standar)
+    // 3. Nasal peak (karakter sengau khas Solo di 1220 Hz +9dB)
+    // 4. Throat presence (artikulasi vokal di 2550 Hz +6dB)
+    // 5. Box Speaker LPF (karakter speaker portabel di 4600 Hz)
+    // 6. Cabinet acoustic reflection (~22ms delay buffer)
+    BiquadFilter mJokowiHpf;
+    BiquadFilter mJokowiDip;
+    BiquadFilter mJokowiNasal;
+    BiquadFilter mJokowiThroat;
+    BiquadFilter mJokowiLpf;
+    std::vector<float> mJokowiBoxBuffer;
+    size_t mJokowiBoxIndex = 0;
 
     void setupJokowiFilter(int32_t sampleRate);
     float processPitchShift(float inSample, float pitchRatio);
