@@ -13,8 +13,8 @@ android {
         applicationId = "com.example.mictospeaker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "1.0.9"
+        versionCode = 11
+        versionName = "1.0.10"
 
         externalNativeBuild {
             cmake {
@@ -73,6 +73,7 @@ android {
     buildFeatures {
         compose = true
         prefab = true
+        buildConfig = true
     }
 }
 

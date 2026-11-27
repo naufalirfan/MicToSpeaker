@@ -68,16 +68,18 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: v1.0.9
-          name: "Mic to Speaker - NFL v1.0.9 (Neon Purple/Magenta Dark UI)"
+          tag_name: v1.0.10
+          name: "Mic to Speaker - NFL v1.0.10 (Fix Navigation Insets & About Dialog)"
           body: |
-            ## Mic to Speaker - NFL v1.0.8 (Exit, Minimize & 17 Real-time Voice Effects)
+            ## Mic to Speaker - NFL v1.0.10 (Fix Navigation Insets & About Dialog)
             Automated build from commit ${{ github.sha }}.
             
-            ### Fitur Baru & Peningkatan di v1.0.8:
-            1. **🔴 Tombol Exit Aplikasi Penuh**:
-               - Terletak di pojok kanan atas `TopAppBar` (ikon power merah) dan di bagian bawah `SettingsScreen`.
-               - Menghentikan Oboe stream, mematikan `AudioPassthroughService` foreground notification, dan memanggil `finishAndRemoveTask()` sehingga aplikasi tertutup bersih 100%.
+            ### Perbaikan di v1.0.10:
+            1. **Fix Gain Slider Terpotong**:
+               - Menambahkan `Modifier.navigationBarsPadding()` dan `verticalScroll(rememberScrollState())` pada layar utama agar slider Gain tidak tertutup navigation bar sistem Android (tombol back/home/recents).
+            2. **Fix Menu About di Settings**:
+               - Menu About kini bisa diklik (`clickable`) dan menampilkan pop-up dialog informasi aplikasi, versi build dinamis dari `BuildConfig`, fitur audio engine C++ Oboe, dan kredit pengembang.
+               - Menambahkan `navigationBarsPadding()` pada SettingsScreen agar tombol Exit App di bawah tidak tertutup navigasi sistem.
             2. **🔽 Tombol Minimize**:
                - Terletak di sebelah kiri ikon Settings (`moveTaskToBack(true)`).
                - Memungkinkan pengguna bernyanyi karaoke sambil membuka YouTube / Spotify di latar belakang tanpa mematikan suara mic!

@@ -77,6 +77,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -329,9 +330,20 @@ fun SettingsScreen(
                 InfoActionRow(
                     icon = Icons.Default.Info,
                     title = "About",
-                    subtitle = "Version 1.0.8 • C++ Oboe Engine (17 Efek Suara)",
-                    showChevron = false,
-                    onClick = {}
+                    subtitle = "Version 1.0.10 • C++ Oboe Engine (17 Efek Suara)",
+                    showChevron = true,
+                    onClick = {
+                        activeDialogTitle = "About Mic to Speaker"
+                        activeDialogBody = "Mic to Speaker - NFL\n" +
+                            "Version 1.0.10 (Build 11)\n\n" +
+                            "• C++ Oboe Native Audio Engine (Ultra-low latency)\n" +
+                            "• 17 Real-time Voice Effects / Presets\n" +
+                            "• Zero-latency Soft-Knee Anti-Clipping Limiter\n" +
+                            "• 3-Band Equalizer (Low / Mid / High)\n" +
+                            "• Background Audio & YouTube/Spotify Mixing\n" +
+                            "• Stereo WAV Local Audio Recording\n\n" +
+                            "Dikembangkan oleh Naufal Putra."
+                    }
                 )
                 HorizontalDivider(color = DividerDark)
 
@@ -354,7 +366,7 @@ fun SettingsScreen(
             text = { Text(activeDialogBody, color = TextSecondary, fontSize = 14.sp) },
             confirmButton = {
                 TextButton(onClick = { activeDialogTitle = null }) {
-                    Text("OK", color = MintAccent)
+                    Text("OK", color = NeonPurple)
                 }
             }
         )
@@ -411,11 +423,12 @@ private fun InfoActionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = showChevron, onClick = onClick)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = MintAccent, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = null, tint = NeonPurple, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, color = TextPrimary, fontSize = 15.sp)

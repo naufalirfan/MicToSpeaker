@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -111,7 +112,9 @@ fun MainScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 20.dp),
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 if (!state.hasPermissions) {
@@ -225,18 +228,18 @@ fun MainScreen(
                     }
                 }
 
-                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.height(18.dp))
 
                 // Tombol Start / Hold-to-Talk Utama (Neon Glow Circle)
                 val activeHighlight = state.isStreaming && (!state.isPttMode || state.isPttPressed)
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    modifier = Modifier.padding(vertical = 4.dp)
                 ) {
                     // Outer ambient radial glow halo
                     Box(
                         modifier = Modifier
-                            .size(180.dp)
+                            .size(160.dp)
                             .clip(CircleShape)
                             .background(
                                 if (activeHighlight) Brush.radialGradient(
@@ -250,7 +253,7 @@ fun MainScreen(
                     // Main circular button
                     Box(
                         modifier = Modifier
-                            .size(144.dp)
+                            .size(130.dp)
                             .clip(CircleShape)
                             .background(if (activeHighlight) MicActiveGradient else MicIdleGradient)
                             .border(
@@ -278,12 +281,12 @@ fun MainScreen(
                             imageVector = if (state.config.isMuted && state.isStreaming) Icons.Default.MicOff else Icons.Default.Mic,
                             contentDescription = "Mic Toggle",
                             tint = Color.White,
-                            modifier = Modifier.size(54.dp)
+                            modifier = Modifier.size(48.dp)
                         )
                     }
                 }
 
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(10.dp))
                 Text(
                     text = when {
                         state.isPttMode && state.isPttPressed -> "Speaking..."
@@ -292,11 +295,11 @@ fun MainScreen(
                         else -> "Start"
                     },
                     color = TextPrimary,
-                    fontSize = 22.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.height(18.dp))
 
                 // Baris Kontrol Cepat: Mute | PTT | Save WAV
                 Row(
@@ -369,7 +372,7 @@ fun MainScreen(
                     )
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(24.dp))
             }
         }
     }
