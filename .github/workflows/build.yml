@@ -68,8 +68,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: v1.0.8
-          name: "Mic to Speaker - NFL v1.0.8 (Exit, Minimize & 17 Voice Effects)"
+          tag_name: v1.0.9
+          name: "Mic to Speaker - NFL v1.0.9 (Neon Purple/Magenta Dark UI)"
           body: |
             ## Mic to Speaker - NFL v1.0.8 (Exit, Minimize & 17 Real-time Voice Effects)
             Automated build from commit ${{ github.sha }}.

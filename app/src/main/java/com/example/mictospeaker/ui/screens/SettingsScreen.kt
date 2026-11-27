@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -367,6 +368,7 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(CardDark)
+            .border(1.dp, CardBorder, RoundedCornerShape(18.dp))
             .padding(16.dp),
         content = content
     )

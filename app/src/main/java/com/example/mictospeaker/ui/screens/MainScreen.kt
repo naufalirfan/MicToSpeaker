@@ -5,7 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,14 +20,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.horizontalScroll
 import com.example.mictospeaker.audio.OutputRoute
 import com.example.mictospeaker.audio.SoundPreset
 import com.example.mictospeaker.data.OutputDeviceItem
@@ -58,229 +59,318 @@ fun MainScreen(
         containerColor = BgDark,
         topBar = {
             TopAppBar(
-                title = { Text("Mic to Speaker - NFL", color = TextPrimary, fontWeight = FontWeight.SemiBold) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = BgDark),
+                title = { Text("Mic to Speaker", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 actions = {
-                    IconButton(onClick = onMinimize) {
+                    IconButton(
+                        onClick = onMinimize,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color(0xFF1C152E).copy(alpha = 0.85f))
+                    ) {
                         Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Minimize", tint = TextSecondary)
                     }
-                    IconButton(onClick = onOpenSettings) {
+                    Spacer(Modifier.width(6.dp))
+                    IconButton(
+                        onClick = onOpenSettings,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color(0xFF1C152E).copy(alpha = 0.85f))
+                    ) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextSecondary)
                     }
-                    IconButton(onClick = onExit) {
-                        Icon(Icons.Default.PowerSettingsNew, contentDescription = "Exit", tint = Color(0xFFEF4444))
+                    Spacer(Modifier.width(6.dp))
+                    IconButton(
+                        onClick = onExit,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color(0xFF2E121E).copy(alpha = 0.85f))
+                    ) {
+                        Icon(Icons.Default.PowerSettingsNew, contentDescription = "Exit", tint = Color(0xFFFF5277))
                     }
                 }
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFF381B5E).copy(alpha = 0.35f),
+                            Color(0xFF1B0E33).copy(alpha = 0.15f),
+                            BgDark
+                        ),
+                        center = Offset(300f, 160f),
+                        radius = 850f
+                    )
+                )
         ) {
-            if (!state.hasPermissions) {
-                Surface(
-                    onClick = onRequestPermissions,
-                    shape = CircleShape,
-                    color = PillSelected,
-                    modifier = Modifier.padding(top = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (!state.hasPermissions) {
+                    Surface(
+                        onClick = onRequestPermissions,
+                        shape = CircleShape,
+                        color = PillSelected,
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .border(1.dp, CardBorder, CircleShape)
                     ) {
-                        Icon(Icons.Default.Warning, null, tint = TextPrimary, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Grant permissions", color = TextPrimary, fontSize = 14.sp)
+                        Row(
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Warning, null, tint = NeonPink, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Grant permissions", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        }
                     }
                 }
-            }
 
-            Spacer(Modifier.height(20.dp))
-            Text(
-                text = if (state.selectedDevice != null) "Ready on ${state.selectedDevice.name}"
-                else "Choose an output device to begin",
-                color = TextSecondary,
-                fontSize = 15.sp
-            )
-
-            Spacer(Modifier.height(14.dp))
-            Text(
-                text = "Output devices",
-                color = TextSecondary,
-                fontSize = 13.sp,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(8.dp))
-
-            // Dropdown Device Selector
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(SurfaceDark)
-                    .clickable { showDeviceSheet = true }
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.Bluetooth, null, tint = MintAccent, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.height(18.dp))
                 Text(
-                    text = state.selectedDevice?.name ?: "Choose device",
-                    color = TextPrimary,
-                    modifier = Modifier.weight(1f)
+                    text = if (state.selectedDevice != null) "Ready on ${state.selectedDevice.name}"
+                    else "Choose an output device to begin",
+                    color = TextSecondary,
+                    fontSize = 14.sp
                 )
-                Icon(Icons.Default.KeyboardArrowDown, null, tint = TextSecondary)
-            }
 
-            Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    text = "Output devices",
+                    color = TextSecondary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
 
-            // 30-bar Real-time Visualizer
-            AudioVisualizer(
-                rmsLevel = if (state.isStreaming) state.rmsLevel else 0f,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(40.dp)
-            )
+                // Dropdown Device Selector (Card styling with subtle purple border)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(CardDark)
+                        .border(1.dp, CardBorder, RoundedCornerShape(18.dp))
+                        .clickable { showDeviceSheet = true }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(PillSelected),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Bluetooth, null, tint = NeonPurple, modifier = Modifier.size(18.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = state.selectedDevice?.name ?: "Choose device",
+                            color = TextPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp
+                        )
+                        Text(
+                            text = state.selectedDevice?.category?.label ?: "Tap to select audio route",
+                            color = TextMuted,
+                            fontSize = 12.sp
+                        )
+                    }
+                    Icon(Icons.Default.KeyboardArrowDown, null, tint = TextSecondary)
+                }
 
-            Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(24.dp))
 
-            // Pemilih Efek Suara Cepat (Voice Effects)
-            Text(
-                text = "Voice Effect: ${state.config.preset.iconEmoji} ${state.config.preset.label}",
-                color = TextSecondary,
-                fontSize = 13.sp,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SoundPreset.entries.forEach { p ->
-                    RouteChip(
-                        label = "${p.iconEmoji} ${p.label}",
-                        selected = state.config.preset == p,
-                        onClick = { onPresetChange(p) }
+                // Real-time Neon Wave Visualizer
+                AudioVisualizer(
+                    rmsLevel = if (state.isStreaming) state.rmsLevel else 0f,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                )
+
+                Spacer(Modifier.height(18.dp))
+
+                // Pemilih Efek Suara Cepat (Voice Effects)
+                Text(
+                    text = "Voice Effect: ${state.config.preset.iconEmoji} ${state.config.preset.label}",
+                    color = TextSecondary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SoundPreset.entries.forEach { p ->
+                        RouteChip(
+                            label = "${p.iconEmoji} ${p.label}",
+                            selected = state.config.preset == p,
+                            onClick = { onPresetChange(p) }
+                        )
+                    }
+                }
+
+                Spacer(Modifier.weight(1f))
+
+                // Tombol Start / Hold-to-Talk Utama (Neon Glow Circle)
+                val activeHighlight = state.isStreaming && (!state.isPttMode || state.isPttPressed)
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                ) {
+                    // Outer ambient radial glow halo
+                    Box(
+                        modifier = Modifier
+                            .size(180.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (activeHighlight) Brush.radialGradient(
+                                    listOf(Color(0xFFEC4899).copy(alpha = 0.45f), Color.Transparent)
+                                ) else Brush.radialGradient(
+                                    listOf(Color(0xFFA855F7).copy(alpha = 0.22f), Color.Transparent)
+                                )
+                            )
+                    )
+
+                    // Main circular button
+                    Box(
+                        modifier = Modifier
+                            .size(144.dp)
+                            .clip(CircleShape)
+                            .background(if (activeHighlight) MicActiveGradient else MicIdleGradient)
+                            .border(
+                                2.dp,
+                                if (activeHighlight) Color(0xFFF472B6) else Color(0xFFA855F7).copy(alpha = 0.65f),
+                                CircleShape
+                            )
+                            .pointerInput(state.isPttMode) {
+                                detectTapGestures(
+                                    onPress = {
+                                        if (state.isPttMode) {
+                                            onPttPressChange(true)
+                                            tryAwaitRelease()
+                                            onPttPressChange(false)
+                                        }
+                                    },
+                                    onTap = {
+                                        if (!state.isPttMode) onToggleStart()
+                                    }
+                                )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (state.config.isMuted && state.isStreaming) Icons.Default.MicOff else Icons.Default.Mic,
+                            contentDescription = "Mic Toggle",
+                            tint = Color.White,
+                            modifier = Modifier.size(54.dp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    text = when {
+                        state.isPttMode && state.isPttPressed -> "Speaking..."
+                        state.isPttMode -> "Hold to Talk"
+                        state.isStreaming -> "Stop"
+                        else -> "Start"
+                    },
+                    color = TextPrimary,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(Modifier.weight(1f))
+
+                // Baris Kontrol Cepat: Mute | PTT | Save WAV
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    QuickChipButton(
+                        icon = Icons.Default.VolumeOff,
+                        label = "Mute",
+                        selected = state.config.isMuted,
+                        onClick = onToggleMute,
+                        modifier = Modifier.weight(1f)
+                    )
+                    QuickChipButton(
+                        icon = Icons.Default.TouchApp,
+                        label = "PTT",
+                        selected = state.isPttMode,
+                        onClick = onTogglePtt,
+                        modifier = Modifier.weight(1f)
+                    )
+                    QuickChipButton(
+                        icon = Icons.Default.FiberManualRecord,
+                        label = if (state.isRecordingWav) "Stop WAV" else "Save WAV",
+                        selected = state.isRecordingWav,
+                        iconTint = if (state.isRecordingWav) Color(0xFFFF4D4D) else NeonPurple,
+                        onClick = onToggleSaveWav,
+                        modifier = Modifier.weight(1.25f)
                     )
                 }
+
+                Spacer(Modifier.height(14.dp))
+
+                // Quick Gain Card
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(CardDark)
+                        .border(1.dp, CardBorder, RoundedCornerShape(18.dp))
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(PillSelected),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Tune, null, tint = NeonPurple, modifier = Modifier.size(18.dp))
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = "Gain ${"%.1f".format(state.config.gain)}x",
+                        color = TextPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.width(76.dp)
+                    )
+                    Slider(
+                        value = state.config.gain,
+                        onValueChange = onGainChange,
+                        valueRange = 0f..3f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = NeonPurple,
+                            activeTrackColor = NeonPurple,
+                            inactiveTrackColor = Color(0xFF261F38)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
             }
-
-            Spacer(Modifier.weight(1f))
-
-            // Tombol Start / Hold-to-Talk Utama
-            val activeHighlight = state.isStreaming && (!state.isPttMode || state.isPttPressed)
-            Box(
-                modifier = Modifier
-                    .size(164.dp)
-                    .clip(CircleShape)
-                    .background(if (activeHighlight) MintAccent else MintAccent.copy(alpha = 0.88f))
-                    .pointerInput(state.isPttMode) {
-                        detectTapGestures(
-                            onPress = {
-                                if (state.isPttMode) {
-                                    onPttPressChange(true)
-                                    tryAwaitRelease()
-                                    onPttPressChange(false)
-                                }
-                            },
-                            onTap = {
-                                if (!state.isPttMode) onToggleStart()
-                            }
-                        )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (state.config.isMuted && state.isStreaming) Icons.Default.MicOff else Icons.Default.Mic,
-                    contentDescription = "Mic Toggle",
-                    tint = Color.White,
-                    modifier = Modifier.size(56.dp)
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = when {
-                    state.isPttMode && state.isPttPressed -> "Speaking..."
-                    state.isPttMode -> "Hold to Talk"
-                    state.isStreaming -> "Stop"
-                    else -> "Start"
-                },
-                color = TextPrimary,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Spacer(Modifier.weight(1f))
-
-            // Baris Kontrol Cepat: Mute | PTT | Save WAV
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                QuickChipButton(
-                    icon = Icons.Default.VolumeOff,
-                    label = "Mute",
-                    selected = state.config.isMuted,
-                    onClick = onToggleMute,
-                    modifier = Modifier.weight(1f)
-                )
-                QuickChipButton(
-                    icon = Icons.Default.TouchApp,
-                    label = "PTT",
-                    selected = state.isPttMode,
-                    onClick = onTogglePtt,
-                    modifier = Modifier.weight(1f)
-                )
-                QuickChipButton(
-                    icon = Icons.Default.FiberManualRecord,
-                    label = if (state.isRecordingWav) "Stop WAV" else "Save WAV",
-                    selected = state.isRecordingWav,
-                    iconTint = if (state.isRecordingWav) Color(0xFFFF6B6B) else MintAccent,
-                    onClick = onToggleSaveWav,
-                    modifier = Modifier.weight(1.25f)
-                )
-            }
-
-            Spacer(Modifier.height(14.dp))
-
-            // Quick Gain Card
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(CardDark)
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.Tune, null, tint = MintAccent, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = "Gain ${"%.1f".format(state.config.gain)}x",
-                    color = TextPrimary,
-                    fontSize = 14.sp,
-                    modifier = Modifier.width(72.dp)
-                )
-                Slider(
-                    value = state.config.gain,
-                    onValueChange = onGainChange,
-                    valueRange = 0f..3f,
-                    colors = SliderDefaults.colors(
-                        thumbColor = MintAccent,
-                        activeTrackColor = MintAccent,
-                        inactiveTrackColor = PillSelected
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
         }
     }
 
@@ -309,17 +399,26 @@ private fun QuickChipButton(
     icon: ImageVector,
     label: String,
     selected: Boolean,
-    iconTint: Color = if (selected) MintAccent else TextSecondary,
+    iconTint: Color = if (selected) Color.White else TextSecondary,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val bgModifier = if (selected) {
+        Modifier
+            .background(PrimaryGradient)
+            .border(1.dp, Color(0xFFE879F9).copy(alpha = 0.6f), RoundedCornerShape(14.dp))
+    } else {
+        Modifier
+            .background(CardDark)
+            .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
+    }
+
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (selected) PillSelected else Color.Transparent)
-            .border(1.dp, if (selected) MintAccent else Color(0xFF323534), RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(14.dp))
+            .then(bgModifier)
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp, horizontal = 8.dp),
+            .padding(vertical = 12.dp, horizontal = 10.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -327,9 +426,9 @@ private fun QuickChipButton(
         Spacer(Modifier.width(6.dp))
         Text(
             text = label,
-            color = if (selected) MintAccent else TextPrimary,
+            color = if (selected) Color.White else TextPrimary,
             fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
             maxLines = 1
         )
     }
@@ -338,25 +437,27 @@ private fun QuickChipButton(
 @Composable
 fun AudioVisualizer(rmsLevel: Float, modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
-        val bars = 30
-        val barWidth = 4.dp.toPx()
+        val bars = 32
+        val barWidth = 3.5.dp.toPx()
         val gap = (size.width - bars * barWidth) / (bars - 1)
         val center = bars / 2f
 
         for (i in 0 until bars) {
             val distance = abs(i - center) / center
-            val weight = (1f - distance * 0.7f).coerceAtLeast(0.2f)
-            val barHeight = (size.height * (0.18f + rmsLevel * 0.82f * weight))
-                .coerceIn(6.dp.toPx(), size.height)
+            val weight = (1f - distance * 0.68f).coerceAtLeast(0.2f)
+            val barHeight = (size.height * (0.16f + rmsLevel * 0.84f * weight))
+                .coerceIn(5.dp.toPx(), size.height)
 
             val x = i * (barWidth + gap)
             val y = (size.height - barHeight) / 2f
+
             drawRoundRect(
-                color = if (rmsLevel > 0.02f) MintAccent.copy(alpha = 0.4f + weight * 0.6f)
-                else Color(0xFF343836),
+                brush = if (rmsLevel > 0.02f) VisualizerGradient
+                else Brush.linearGradient(listOf(Color(0xFF261F38), Color(0xFF261F38))),
                 topLeft = Offset(x, y),
                 size = Size(barWidth, barHeight),
-                cornerRadius = CornerRadius(barWidth / 2, barWidth / 2)
+                cornerRadius = CornerRadius(barWidth / 2, barWidth / 2),
+                alpha = if (rmsLevel > 0.02f) (0.55f + weight * 0.45f) else 0.45f
             )
         }
     }
@@ -382,11 +483,12 @@ fun OutputDeviceSheetContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(18.dp))
                 .background(CardDark)
+                .border(1.dp, CardBorder, RoundedCornerShape(18.dp))
                 .padding(16.dp)
         ) {
-            Text("Output route", color = TextPrimary, fontWeight = FontWeight.SemiBold)
+            Text("Output route", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 RouteChip(
@@ -413,7 +515,7 @@ fun OutputDeviceSheetContent(
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = "SCO may take a few seconds.",
-                    color = Color(0xFFD99CB5),
+                    color = Color(0xFFE879F9),
                     fontSize = 12.sp
                 )
             }
@@ -423,14 +525,23 @@ fun OutputDeviceSheetContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(18.dp))
                 .background(CardDark)
+                .border(1.dp, CardBorder, RoundedCornerShape(18.dp))
                 .padding(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Bluetooth, null, tint = MintAccent, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Output devices", color = TextPrimary, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(PillSelected),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Bluetooth, null, tint = NeonPurple, modifier = Modifier.size(17.dp))
+                }
+                Spacer(Modifier.width(10.dp))
+                Text("Output devices", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, modifier = Modifier.weight(1f))
                 IconButton(onClick = onRefresh) {
                     Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = TextPrimary)
                 }
@@ -438,6 +549,7 @@ fun OutputDeviceSheetContent(
 
             val activeDevices = devices.filter { it.isConnected }
             if (activeDevices.isEmpty()) {
+                Spacer(Modifier.height(8.dp))
                 Text(
                     "Pair a Bluetooth device or plug in audio, then refresh.",
                     color = TextSecondary,
@@ -448,19 +560,23 @@ fun OutputDeviceSheetContent(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
                             .clickable { onSelectDevice(dev) }
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 10.dp, horizontal = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
                             selected = dev.id == selectedDeviceId,
                             onClick = { onSelectDevice(dev) },
-                            colors = RadioButtonDefaults.colors(selectedColor = MintAccent)
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = NeonPurple,
+                                unselectedColor = TextMuted
+                            )
                         )
                         Spacer(Modifier.width(8.dp))
                         Column {
-                            Text(dev.name, color = TextPrimary, fontSize = 15.sp)
-                            Text(dev.category.label, color = TextSecondary, fontSize = 12.sp)
+                            Text(dev.name, color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            Text(dev.category.label, color = TextMuted, fontSize = 12.sp)
                         }
                     }
                 }
@@ -471,19 +587,33 @@ fun OutputDeviceSheetContent(
 
 @Composable
 fun RouteChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    val bgModifier = if (selected) {
+        Modifier
+            .background(PrimaryGradient)
+            .border(1.dp, Color(0xFFE879F9).copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+    } else {
+        Modifier
+            .background(CardDark)
+            .border(1.dp, CardBorder, RoundedCornerShape(12.dp))
+    }
+
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (selected) PillSelected else Color.Transparent)
-            .border(1.dp, if (selected) Color.Transparent else Color(0xFF3E3B46), RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .then(bgModifier)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (selected) {
-            Icon(Icons.Default.Check, null, tint = TextPrimary, modifier = Modifier.size(16.dp))
+            Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(15.dp))
             Spacer(Modifier.width(6.dp))
         }
-        Text(label, color = TextPrimary, fontSize = 13.sp)
+        Text(
+            label,
+            color = if (selected) Color.White else TextPrimary,
+            fontSize = 13.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+        )
     }
 }
